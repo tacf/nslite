@@ -383,12 +383,31 @@ function RootView:new()
   RootView.super.new(self)
   self.root_node = Node()
   self.deferred_draws = {}
+  self.floating_views = {}
   self.mouse = { x = 0, y = 0 }
 end
 
 
 function RootView:defer_draw(fn, ...)
   table.insert(self.deferred_draws, 1, { fn = fn, ... })
+end
+
+
+-- Floating views are drawn on top of the node tree, positioned freely
+-- (independent of the split layout). While a floating view reports itself
+-- as shown, it captures input as a modal overlay.
+function RootView:add_floating_view(view)
+  view.floating = true
+  table.insert(self.floating_views, view)
+end
+
+
+function RootView:get_active_floating_view()
+  for _, view in ipairs(self.floating_views) do
+    if view:is_shown() then
+      return view
+    end
+  end
 end
 
 
@@ -419,6 +438,19 @@ end
 
 
 function RootView:on_mouse_pressed(button, x, y, clicks)
+  -- a shown floating view is modal: it captures the click, and a click
+  -- outside its bounds dismisses it
+  local fv = self:get_active_floating_view()
+  if fv then
+    if fv:floating_contains_point(x, y) then
+      core.set_active_view(fv)
+      fv:on_mouse_pressed(button, x, y, clicks)
+    else
+      fv:exit()
+    end
+    return
+  end
+
   local div = self.root_node:get_divider_overlapping_point(x, y)
   if div then
     self.dragged_divider = div
@@ -447,6 +479,14 @@ end
 
 
 function RootView:on_mouse_moved(x, y, dx, dy)
+  self.mouse.x, self.mouse.y = x, y
+  local fv = self:get_active_floating_view()
+  if fv then
+    fv:on_mouse_moved(x, y, dx, dy)
+    system.set_cursor(fv.cursor)
+    return
+  end
+
   if self.dragged_divider then
     local node = self.dragged_divider
     if node.type == "hsplit" then
@@ -458,7 +498,6 @@ function RootView:on_mouse_moved(x, y, dx, dy)
     return
   end
 
-  self.mouse.x, self.mouse.y = x, y
   self.root_node:on_mouse_moved(x, y, dx, dy)
 
   local node = self.root_node:get_child_overlapping_point(x, y)
@@ -474,6 +513,11 @@ end
 
 
 function RootView:on_mouse_wheel(...)
+  local fv = self:get_active_floating_view()
+  if fv then
+    fv:on_mouse_wheel(...)
+    return
+  end
   local x, y = self.mouse.x, self.mouse.y
   local node = self.root_node:get_child_overlapping_point(x, y)
   node.active_view:on_mouse_wheel(...)
@@ -489,6 +533,9 @@ function RootView:update()
   copy_position_and_size(self.root_node, self)
   self.root_node:update()
   self.root_node:update_layout()
+  for _, view in ipairs(self.floating_views) do
+    view:update()
+  end
 end
 
 
@@ -497,6 +544,16 @@ function RootView:draw()
   while #self.deferred_draws > 0 do
     local t = table.remove(self.deferred_draws)
     t.fn(table.unpack(t))
+  end
+  -- floating views draw on top of everything, without layout clipping
+  for _, view in ipairs(self.floating_views) do
+    if view:is_shown() then
+      view:draw()
+      while #self.deferred_draws > 0 do
+        local t = table.remove(self.deferred_draws)
+        t.fn(table.unpack(t))
+      end
+    end
   end
 end
 

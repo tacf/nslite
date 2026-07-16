@@ -114,6 +114,36 @@ function common.match_pattern(text, pattern, ...)
 end
 
 
+-- Draws a filled rectangle with (optionally) rounded corners, emulated with
+-- per-scanline horizontal spans since the renderer only fills plain rects.
+-- `corners` is an optional table { tl, tr, bl, br } of booleans (default: all).
+function common.draw_rounded_rect(x, y, w, h, radius, color, corners)
+  radius = math.min(radius or 0, math.floor(w / 2), math.floor(h / 2))
+  if radius <= 0 then
+    renderer.draw_rect(x, y, w, h, color)
+    return
+  end
+  corners = corners or { tl = true, tr = true, bl = true, br = true }
+
+  -- straight middle band spanning the full width
+  renderer.draw_rect(x, y + radius, w, h - radius * 2, color)
+
+  for i = 0, radius - 1 do
+    local dy = radius - i - 0.5
+    local chord = math.sqrt(math.max(0, radius * radius - dy * dy))
+    local inset = common.round(radius - chord)
+    -- top band
+    local tl = corners.tl and inset or 0
+    local tr = corners.tr and inset or 0
+    renderer.draw_rect(x + tl, y + i, w - tl - tr, 1, color)
+    -- bottom band
+    local bl = corners.bl and inset or 0
+    local br = corners.br and inset or 0
+    renderer.draw_rect(x + bl, y + h - 1 - i, w - bl - br, 1, color)
+  end
+end
+
+
 function common.draw_text(font, color, text, align, x,y,w,h)
   local tw, th = font:get_width(text), font:get_height(text)
   if align == "center" then

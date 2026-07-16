@@ -107,8 +107,8 @@ function core.init()
   core.command_view = CommandView()
   core.status_view = StatusView()
 
-  core.root_view.root_node:split("down", core.command_view, true)
-  core.root_view.root_node.b:split("down", core.status_view, true)
+  core.root_view.root_node:split("down", core.status_view, true)
+  core.root_view:add_floating_view(core.command_view)
 
   core.add_thread(project_scan_thread)
   command.add_defaults()

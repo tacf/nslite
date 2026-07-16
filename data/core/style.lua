@@ -7,6 +7,13 @@ style.scrollbar_size = common.round(4 * SCALE)
 style.caret_width = common.round(2 * SCALE)
 style.tab_width = common.round(170 * SCALE)
 
+-- floating command palette (configurable)
+style.commandview_corner_radius = common.round(6 * SCALE)
+style.commandview_shadow_size = 0
+style.commandview_shadow_offset = common.round(2 * SCALE)
+style.commandview_shadow_color = { 0, 0, 0, 90 }
+style.commandview_overlay_color = { 0, 0, 0, 110 }
+
 style.font = renderer.font.load(EXEDIR .. "/data/fonts/font.ttf", 14 * SCALE)
 style.big_font = renderer.font.load(EXEDIR .. "/data/fonts/font.ttf", 34 * SCALE)
 style.icon_font = renderer.font.load(EXEDIR .. "/data/fonts/icons.ttf", 14 * SCALE)
