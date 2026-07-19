@@ -2,10 +2,13 @@
 
 Text editor based or [rxi/lite](https://github.com/rxi/lite)
 
-Main features:
 - Editor is mainly a rendering engine built in C and constructed through the supplied Lua api.
 - SDL3 as rendering lib
 - Lua 5.5 as base lua version
+
+Features:
+- Modern styled command prompt
+- Modern styled search in document
 
 ## License
 This project is free software; you can redistribute it and/or modify it under
