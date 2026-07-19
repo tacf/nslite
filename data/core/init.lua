@@ -7,6 +7,7 @@ local keymap
 local RootView
 local StatusView
 local CommandView
+local FindView
 local Doc
 
 local core = {}
@@ -80,6 +81,7 @@ function core.init()
   RootView = require "core.rootview"
   StatusView = require "core.statusview"
   CommandView = require "core.commandview"
+  FindView = require "core.findview"
   Doc = require "core.doc"
 
   local project_dir = EXEDIR
@@ -105,10 +107,12 @@ function core.init()
 
   core.root_view = RootView()
   core.command_view = CommandView()
+  core.find_view = FindView()
   core.status_view = StatusView()
 
   core.root_view.root_node:split("down", core.status_view, true)
   core.root_view:add_floating_view(core.command_view)
+  core.root_view:add_floating_view(core.find_view)
 
   core.add_thread(project_scan_thread)
   command.add_defaults()

@@ -3,6 +3,7 @@ local command = require "core.command"
 local config = require "core.config"
 local search = require "core.doc.search"
 local DocView = require "core.docview"
+local FindView = require "core.findview"
 
 local max_previous_finds = 50
 
@@ -29,7 +30,7 @@ local function push_previous_find(doc, sel)
 end
 
 
-local function find(label, search_fn)
+local function find_in_command_view(label, search_fn)
   local dv = core.active_view
   local sel = { dv.doc:get_selection() }
   local text = dv.doc:get_text(table.unpack(sel))
@@ -87,6 +88,7 @@ end
 
 local function has_selection()
   return core.active_view:is(DocView)
+     and not core.active_view:is(FindView)
      and core.active_view.doc:has_selection()
 end
 
@@ -99,16 +101,18 @@ command.add(has_selection, {
   end
 })
 
-command.add("core.docview", {
+local function has_docview()
+  return core.active_view:is(DocView) and not core.active_view:is(FindView)
+end
+
+
+command.add(has_docview, {
   ["find-replace:find"] = function()
-    find("Find Text", function(doc, line, col, text)
-      local opt = { wrap = true, no_case = true }
-      return search.find(doc, line, col, text, opt)
-    end)
+    core.find_view:show(core.active_view)
   end,
 
   ["find-replace:find-pattern"] = function()
-    find("Find Text Pattern", function(doc, line, col, text)
+    find_in_command_view("Find Text Pattern", function(doc, line, col, text)
       local opt = { wrap = true, no_case = true, pattern = true }
       return search.find(doc, line, col, text, opt)
     end)

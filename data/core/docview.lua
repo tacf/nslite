@@ -303,6 +303,21 @@ function DocView:draw_line_text(idx, x, y)
 end
 
 
+function DocView:draw_find_matches(idx, x, y)
+  local state = self.doc.find_state
+  local matches = state and state.by_line[idx]
+  if not matches then return end
+  local lh = self:get_line_height()
+  for _, match in ipairs(matches) do
+    local x1 = x + self:get_col_x_offset(idx, match.col1)
+    local x2 = x + self:get_col_x_offset(idx, match.col2)
+    local color = match == state.matches[state.current]
+      and style.find_highlight_current or style.find_highlight
+    renderer.draw_rect(x1, y, x2 - x1, lh, color)
+  end
+end
+
+
 function DocView:draw_line_body(idx, x, y)
   local line, col = self.doc:get_selection()
 
@@ -323,6 +338,8 @@ function DocView:draw_line_body(idx, x, y)
   and line == idx and core.active_view == self then
     self:draw_line_highlight(x + self.scroll.x, y)
   end
+
+  self:draw_find_matches(idx, x, y)
 
   -- draw line's text
   self:draw_line_text(idx, x, y)
