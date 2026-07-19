@@ -30,7 +30,27 @@ jobs:
             archive: nslite-windows.zip
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+
+      - name: Install Linux build dependencies
+        if: matrix.name == 'linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            libegl1-mesa-dev \
+            libgl1-mesa-dev \
+            libwayland-dev \
+            libx11-dev \
+            libxcursor-dev \
+            libxext-dev \
+            libxfixes-dev \
+            libxi-dev \
+            libxkbcommon-dev \
+            libxrandr-dev \
+            libxss-dev \
+            libxtst-dev \
+            patchelf
 
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -42,8 +62,6 @@ jobs:
         if: matrix.name == 'linux'
         shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install --yes patchelf
           app_dir="dist/nslite-linux"
           mkdir -p "$app_dir"
           cp build/lite "$app_dir/"
@@ -87,7 +105,7 @@ jobs:
           Compress-Archive -Path "$appDir/*" -DestinationPath nslite-windows.zip
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: nslite-${{ matrix.name }}
           path: ${{ matrix.archive }}
@@ -100,7 +118,7 @@ jobs:
     outputs:
       tag: ${{ steps.tag.outputs.name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -124,7 +142,7 @@ jobs:
       contents: write
     steps:
       - name: Download release assets
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: nslite-*
           merge-multiple: true
