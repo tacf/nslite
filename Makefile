@@ -14,4 +14,4 @@ clean:
 	@rm -rf build
 
 run: build
-	@cd build && ./lite
+	./build/lite .
