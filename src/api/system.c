@@ -3,10 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <dirent.h>
-#include <unistd.h>
-#include <errno.h>
-#include <sys/stat.h>
 #include "api.h"
 #include "rencache.h"
 
@@ -218,46 +214,63 @@ static int f_show_confirm_dialog(lua_State *L) {
 }
 
 
-static int f_chdir(lua_State *L) {
-  const char *path = luaL_checkstring(L, 1);
-  int err = chdir(path);
-  if (err) { luaL_error(L, "chdir() failed"); }
-  return 0;
+typedef struct {
+  lua_State *L;
+  int count;
+} ListDirData;
+
+
+static SDL_EnumerationResult SDLCALL list_dir_entry(
+  void *userdata, const char *dirname, const char *fname
+) {
+  (void) dirname;
+  ListDirData *data = userdata;
+  if (strcmp(fname, ".") == 0 || strcmp(fname, "..") == 0) {
+    return SDL_ENUM_CONTINUE;
+  }
+  lua_pushstring(data->L, fname);
+  lua_rawseti(data->L, -2, ++data->count);
+  return SDL_ENUM_CONTINUE;
 }
 
 
 static int f_list_dir(lua_State *L) {
   const char *path = luaL_checkstring(L, 1);
-
-  DIR *dir = opendir(path);
-  if (!dir) {
+  lua_newtable(L);
+  ListDirData data = { L, 0 };
+  if (!SDL_EnumerateDirectory(path, list_dir_entry, &data)) {
+    lua_pop(L, 1);
     lua_pushnil(L);
-    lua_pushstring(L, strerror(errno));
+    lua_pushstring(L, SDL_GetError());
     return 2;
   }
-
-  lua_newtable(L);
-  int i = 1;
-  struct dirent *entry;
-  while ( (entry = readdir(dir)) ) {
-    if (strcmp(entry->d_name, "." ) == 0) { continue; }
-    if (strcmp(entry->d_name, "..") == 0) { continue; }
-    lua_pushstring(L, entry->d_name);
-    lua_rawseti(L, -2, i);
-    i++;
-  }
-
-  closedir(dir);
   return 1;
+}
+
+
+static bool path_is_absolute(const char *path) {
+  return path[0] == '/' || path[0] == '\\'
+      || (isalpha((unsigned char) path[0]) && path[1] == ':');
 }
 
 
 static int f_absolute_path(lua_State *L) {
   const char *path = luaL_checkstring(L, 1);
-  char *res = realpath(path, NULL);
-  if (!res) { return 0; }
+  char *cwd = NULL;
+  char *res = NULL;
+  if (path_is_absolute(path)) {
+    res = SDL_strdup(path);
+  } else {
+    cwd = SDL_GetCurrentDirectory();
+    if (cwd) { SDL_asprintf(&res, "%s%s", cwd, path); }
+  }
+  SDL_free(cwd);
+  if (!res || !SDL_GetPathInfo(res, NULL)) {
+    SDL_free(res);
+    return 0;
+  }
   lua_pushstring(L, res);
-  free(res);
+  SDL_free(res);
   return 1;
 }
 
@@ -265,24 +278,23 @@ static int f_absolute_path(lua_State *L) {
 static int f_get_file_info(lua_State *L) {
   const char *path = luaL_checkstring(L, 1);
 
-  struct stat s;
-  int err = stat(path, &s);
-  if (err < 0) {
+  SDL_PathInfo info;
+  if (!SDL_GetPathInfo(path, &info)) {
     lua_pushnil(L);
-    lua_pushstring(L, strerror(errno));
+    lua_pushstring(L, SDL_GetError());
     return 2;
   }
 
   lua_newtable(L);
-  lua_pushnumber(L, s.st_mtime);
+  lua_pushnumber(L, (lua_Number) info.modify_time);
   lua_setfield(L, -2, "modified");
 
-  lua_pushnumber(L, s.st_size);
+  lua_pushnumber(L, (lua_Number) info.size);
   lua_setfield(L, -2, "size");
 
-  if (S_ISREG(s.st_mode)) {
+  if (info.type == SDL_PATHTYPE_FILE) {
     lua_pushstring(L, "file");
-  } else if (S_ISDIR(s.st_mode)) {
+  } else if (info.type == SDL_PATHTYPE_DIRECTORY) {
     lua_pushstring(L, "dir");
   } else {
     lua_pushnil(L);
@@ -364,7 +376,6 @@ static const luaL_Reg lib[] = {
   { "set_window_mode",     f_set_window_mode     },
   { "window_has_focus",    f_window_has_focus    },
   { "show_confirm_dialog", f_show_confirm_dialog },
-  { "chdir",               f_chdir               },
   { "list_dir",            f_list_dir            },
   { "absolute_path",       f_absolute_path       },
   { "get_file_info",       f_get_file_info       },

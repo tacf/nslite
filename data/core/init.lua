@@ -32,15 +32,17 @@ local function project_scan_thread()
     coroutine.yield()
     t = t or {}
     local size_limit = config.file_size_limit * 10e5
-    local all = system.list_dir(path) or {}
+    local directory = path == "" and core.project_dir
+      or core.project_dir .. PATHSEP .. path
+    local all = system.list_dir(directory) or {}
     local dirs, files = {}, {}
 
     for _, file in ipairs(all) do
       if not common.match_pattern(file, config.ignore_files) then
-        local file = (path ~= "." and path .. PATHSEP or "") .. file
-        local info = system.get_file_info(file)
+        local filename = (path ~= "" and path .. PATHSEP or "") .. file
+        local info = system.get_file_info(core.project_dir .. PATHSEP .. filename)
         if info and info.size < size_limit then
-          info.filename = file
+          info.filename = filename
           table.insert(info.type == "dir" and dirs or files, info)
         end
       end
@@ -63,7 +65,7 @@ local function project_scan_thread()
   while true do
     -- get project files and replace previous table if the new table is
     -- different
-    local t = get_files(".")
+    local t = get_files("")
     if diff_files(core.project_files, t) then
       core.project_files = t
       core.redraw = true
@@ -95,7 +97,7 @@ function core.init()
     end
   end
 
-  system.chdir(project_dir)
+  core.project_dir = assert(system.absolute_path(project_dir))
 
   core.frame_start = 0
   core.clip_rect_stack = {{ 0,0,0,0 }}
@@ -193,7 +195,7 @@ end
 
 
 function core.load_project_module()
-  local filename = ".lite_project.lua"
+  local filename = core.project_dir .. PATHSEP .. ".lite_project.lua"
   if system.get_file_info(filename) then
     return core.try(function()
       local fn, err = loadfile(filename)
@@ -251,7 +253,16 @@ function core.pop_clip_rect()
 end
 
 
+function core.project_path(filename)
+  if not filename or filename:match("^[/\\]") or filename:match("^%a:[/\\]") then
+    return filename
+  end
+  return core.project_dir .. PATHSEP .. filename
+end
+
+
 function core.open_doc(filename)
+  filename = core.project_path(filename)
   if filename then
     -- try to find existing doc for filename
     local abs_filename = system.absolute_path(filename)

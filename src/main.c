@@ -16,11 +16,18 @@ static double get_scale(void) {
 
 
 static void get_exe_filename(const char *argv0, char *buf, int sz) {
-  char *res = realpath(argv0, buf);
-  if (!res) {
-    strncpy(buf, argv0, sz - 1);
-    buf[sz - 1] = '\0';
+  const char *basename = strrchr(argv0, '/');
+  const char *windows_basename = strrchr(argv0, '\\');
+  if (!basename || (windows_basename && windows_basename > basename)) {
+    basename = windows_basename;
   }
+  basename = basename ? basename + 1 : argv0;
+
+  const char *basepath = SDL_GetBasePath();
+  if (basepath && snprintf(buf, sz, "%s%s", basepath, basename) < sz) { return; }
+
+  strncpy(buf, argv0, sz - 1);
+  buf[sz - 1] = '\0';
 }
 
 
