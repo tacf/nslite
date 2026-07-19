@@ -1,0 +1,145 @@
+name: Build and release
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags:
+      - "*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux
+            os: ubuntu-latest
+            archive: nslite-linux.tar.gz
+          - name: macos
+            os: macos-latest
+            archive: nslite-macos.tar.gz
+          - name: windows
+            os: windows-latest
+            archive: nslite-windows.zip
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Package Linux artifact
+        if: matrix.name == 'linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes patchelf
+          app_dir="dist/nslite-linux"
+          mkdir -p "$app_dir"
+          cp build/lite "$app_dir/"
+          cp -a data "$app_dir/data"
+          sdl_library="$(find build -type f -name 'libSDL3.so*' -print -quit)"
+          test -n "$sdl_library"
+          cp -a "$(dirname "$sdl_library")"/libSDL3.so* "$app_dir/"
+          patchelf --set-rpath '$ORIGIN' "$app_dir/lite"
+          tar -C dist -czf nslite-linux.tar.gz nslite-linux
+
+      - name: Package macOS artifact
+        if: matrix.name == 'macos'
+        shell: bash
+        run: |
+          app_dir="dist/nslite-macos"
+          mkdir -p "$app_dir"
+          binary="$(find build -type f -name lite -perm -111 -print -quit)"
+          sdl_library="$(find build -type f -name 'libSDL3*.dylib' -print -quit)"
+          test -n "$binary"
+          test -n "$sdl_library"
+          cp "$binary" "$app_dir/lite"
+          cp "$sdl_library" "$app_dir/"
+          cp -R data "$app_dir/data"
+          sdl_reference="$(otool -L "$app_dir/lite" | awk '/SDL3/{print $1; exit}')"
+          install_name_tool -change "$sdl_reference" "@rpath/$(basename "$sdl_library")" "$app_dir/lite"
+          install_name_tool -add_rpath '@loader_path' "$app_dir/lite"
+          tar -C dist -czf nslite-macos.tar.gz nslite-macos
+
+      - name: Package Windows artifact
+        if: matrix.name == 'windows'
+        shell: pwsh
+        run: |
+          $appDir = 'dist/nslite-windows'
+          New-Item -ItemType Directory -Force -Path $appDir | Out-Null
+          $binary = Get-ChildItem -Path build -Filter lite.exe -Recurse | Select-Object -First 1
+          $sdlLibrary = Get-ChildItem -Path build -Filter SDL3.dll -Recurse | Select-Object -First 1
+          if (-not $binary -or -not $sdlLibrary) { throw 'Built executable or SDL3 runtime was not found.' }
+          Copy-Item $binary.FullName $appDir
+          Copy-Item $sdlLibrary.FullName $appDir
+          Copy-Item -Recurse data "$appDir/data"
+          Compress-Archive -Path "$appDir/*" -DestinationPath nslite-windows.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nslite-${{ matrix.name }}
+          path: ${{ matrix.archive }}
+          if-no-files-found: error
+
+  verify-tag-on-main:
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    name: Verify tag is on main
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: tag
+        run: echo "name=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure tagged commit is reachable from main
+        run: |
+          git fetch origin main --tags --force
+          tag_commit="$(git rev-list -n 1 "$GITHUB_REF_NAME")"
+          git merge-base --is-ancestor "$tag_commit" origin/main
+
+  release:
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    name: Publish release
+    needs:
+      - build
+      - verify-tag-on-main
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          pattern: nslite-*
+          merge-multiple: true
+          path: release-assets
+
+      - name: Add version to asset names
+        env:
+          TAG: ${{ needs.verify-tag-on-main.outputs.tag }}
+        run: |
+          mv release-assets/nslite-linux.tar.gz "release-assets/nslite-${TAG}-linux.tar.gz"
+          mv release-assets/nslite-macos.tar.gz "release-assets/nslite-${TAG}-macos.tar.gz"
+          mv release-assets/nslite-windows.zip "release-assets/nslite-${TAG}-windows.zip"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.verify-tag-on-main.outputs.tag }}
+        run: gh release create "$TAG" release-assets/* --title "$TAG" --generate-notes
