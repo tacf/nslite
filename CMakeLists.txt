@@ -60,7 +60,11 @@ add_executable(lite ${LITE_SOURCES} ${STB_SOURCES})
 
 target_include_directories(lite PRIVATE src)
 
-target_link_libraries(lite PRIVATE SDL3::SDL3 lua m)
+target_link_libraries(lite PRIVATE SDL3::SDL3 lua)
+
+if(UNIX)
+    target_link_libraries(lite PRIVATE m)
+endif()
 
 if(UNIX AND NOT APPLE)
     target_compile_definitions(lite PRIVATE LUA_USE_POSIX)
