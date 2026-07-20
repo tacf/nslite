@@ -20,7 +20,7 @@ typedef struct {
   RenColor color;
   RenFont *font;
   int tab_width;
-  char text[0];
+  char text[];
 } Command;
 
 

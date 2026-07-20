@@ -4,6 +4,14 @@ project(nsl C)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+function(nslite_enable_strict_warnings target)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4 /WX)
+    elseif(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    endif()
+endfunction()
+
 include(FetchContent)
 
 FetchContent_Declare(
@@ -57,6 +65,7 @@ set(NSLITE_SOURCES
 )
 
 add_executable(nsl ${NSLITE_SOURCES} ${STB_SOURCES})
+nslite_enable_strict_warnings(nsl)
 
 target_include_directories(nsl PRIVATE src)
 
