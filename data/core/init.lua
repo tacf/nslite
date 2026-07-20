@@ -119,7 +119,12 @@ function core.init()
   core.add_thread(project_scan_thread)
   command.add_defaults()
   local got_plugin_error = not core.load_plugins()
-  local got_user_error = not core.try(require, "user")
+  local got_user_error = not core.try(function()
+    local filename = USERDIR .. PATHSEP .. "init.lua"
+    local fn, err = loadfile(filename)
+    if not fn then error("Error loading user module:\n\t" .. err) end
+    fn()
+  end)
   local got_project_error = not core.load_project_module()
 
   for _, filename in ipairs(files) do
