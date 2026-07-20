@@ -89,7 +89,7 @@ command.add(nil, {
   end,
 
   ["core:open-project-module"] = function()
-    local filename = core.project_path(".lite_project.lua")
+    local filename = core.project_path(".nslite_project.lua")
     if system.get_file_info(filename) then
       core.root_view:open_doc(core.open_doc(filename))
     else

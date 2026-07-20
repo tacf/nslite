@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(lite C)
+project(nsl C)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -46,7 +46,7 @@ endif()
 
 file(GLOB_RECURSE STB_SOURCES CONFIGURE_DEPENDS src/lib/stb/*.c)
 
-set(LITE_SOURCES
+set(NSLITE_SOURCES
     src/main.c
     src/renderer.c
     src/rencache.c
@@ -56,31 +56,31 @@ set(LITE_SOURCES
     src/api/system.c
 )
 
-add_executable(lite ${LITE_SOURCES} ${STB_SOURCES})
+add_executable(nsl ${NSLITE_SOURCES} ${STB_SOURCES})
 
-target_include_directories(lite PRIVATE src)
+target_include_directories(nsl PRIVATE src)
 
-target_link_libraries(lite PRIVATE SDL3::SDL3 lua)
+target_link_libraries(nsl PRIVATE SDL3::SDL3 lua)
 
 if(UNIX)
-    target_link_libraries(lite PRIVATE m)
+    target_link_libraries(nsl PRIVATE m)
 endif()
 
 if(UNIX AND NOT APPLE)
-    target_compile_definitions(lite PRIVATE LUA_USE_POSIX)
+    target_compile_definitions(nsl PRIVATE LUA_USE_POSIX)
 elseif(WIN32)
-    target_compile_definitions(lite PRIVATE LUA_USE_POPEN)
+    target_compile_definitions(nsl PRIVATE LUA_USE_POPEN)
 endif()
 
 file(GLOB_RECURSE DATA_FILES CONFIGURE_DEPENDS data/*.lua)
 
 add_custom_target(copy_data ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:lite>/data
+    ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:nsl>/data
     DEPENDS ${DATA_FILES}
 )
 
-add_custom_command(TARGET lite POST_BUILD
+add_custom_command(TARGET nsl POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:lite>/data
+    ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:nsl>/data
 )

@@ -64,12 +64,12 @@ jobs:
         run: |
           app_dir="dist/nslite-linux"
           mkdir -p "$app_dir"
-          cp build/lite "$app_dir/"
+          cp build/nsl "$app_dir/"
           cp -a data "$app_dir/data"
           sdl_library="$(find build -type f -name 'libSDL3.so*' -print -quit)"
           test -n "$sdl_library"
           cp -a "$(dirname "$sdl_library")"/libSDL3.so* "$app_dir/"
-          patchelf --set-rpath '$ORIGIN' "$app_dir/lite"
+          patchelf --set-rpath '$ORIGIN' "$app_dir/nsl"
           tar -C dist -czf nslite-linux.tar.gz nslite-linux
 
       - name: Package macOS artifact
@@ -78,16 +78,16 @@ jobs:
         run: |
           app_dir="dist/nslite-macos"
           mkdir -p "$app_dir"
-          binary="$(find build -type f -name lite -perm -111 -print -quit)"
+          binary="$(find build -type f -name nsl -perm -111 -print -quit)"
           sdl_library="$(find build -type f -name 'libSDL3*.dylib' -print -quit)"
           test -n "$binary"
           test -n "$sdl_library"
-          cp "$binary" "$app_dir/lite"
+          cp "$binary" "$app_dir/nsl"
           cp "$sdl_library" "$app_dir/"
           cp -R data "$app_dir/data"
-          sdl_reference="$(otool -L "$app_dir/lite" | awk '/SDL3/{print $1; exit}')"
-          install_name_tool -change "$sdl_reference" "@rpath/$(basename "$sdl_library")" "$app_dir/lite"
-          install_name_tool -add_rpath '@loader_path' "$app_dir/lite"
+          sdl_reference="$(otool -L "$app_dir/nsl" | awk '/SDL3/{print $1; exit}')"
+          install_name_tool -change "$sdl_reference" "@rpath/$(basename "$sdl_library")" "$app_dir/nsl"
+          install_name_tool -add_rpath '@loader_path' "$app_dir/nsl"
           tar -C dist -czf nslite-macos.tar.gz nslite-macos
 
       - name: Package Windows artifact
@@ -96,7 +96,7 @@ jobs:
         run: |
           $appDir = 'dist/nslite-windows'
           New-Item -ItemType Directory -Force -Path $appDir | Out-Null
-          $binary = Get-ChildItem -Path build -Filter lite.exe -Recurse | Select-Object -First 1
+          $binary = Get-ChildItem -Path build -Filter nsl.exe -Recurse | Select-Object -First 1
           $sdlLibrary = Get-ChildItem -Path build -Filter SDL3.dll -Recurse | Select-Object -First 1
           if (-not $binary -or -not $sdlLibrary) { throw 'Built executable or SDL3 runtime was not found.' }
           Copy-Item $binary.FullName $appDir

@@ -138,7 +138,7 @@ end
 
 
 local temp_uid = math.floor((system.get_time() * 1000) % 0xffffffff)
-local temp_file_prefix = string.format(".lite_temp_%08x", temp_uid)
+local temp_file_prefix = string.format(".nslite_temp_%08x", temp_uid)
 local temp_file_counter = 0
 
 local function delete_temp_files()
@@ -200,7 +200,7 @@ end
 
 
 function core.load_project_module()
-  local filename = core.project_dir .. PATHSEP .. ".lite_project.lua"
+  local filename = core.project_dir .. PATHSEP .. ".nslite_project.lua"
   if system.get_file_info(filename) then
     return core.try(function()
       local fn, err = loadfile(filename)
@@ -420,7 +420,7 @@ function core.step()
 
   -- update window title
   local name = core.active_view:get_name()
-  local title = (name ~= "---") and (name .. " - lite") or  "lite"
+  local title = (name ~= "---") and (name .. " - nslite") or  "nslite"
   if title ~= core.window_title then
     system.set_window_title(title)
     core.window_title = title
