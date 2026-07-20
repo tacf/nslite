@@ -265,7 +265,7 @@ command.add(ResultsView, {
 
 keymap.add {
   ["f5"]           = "project-search:refresh",
-  ["ctrl+shift+f"] = "project-search:find",
+  ["mod+shift+f"] = "project-search:find",
   ["up"]           = "project-search:select-previous",
   ["down"]         = "project-search:select-next",
   ["return"]       = "project-search:open-selected",

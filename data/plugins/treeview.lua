@@ -195,4 +195,4 @@ command.add(nil, {
   end,
 })
 
-keymap.add { ["ctrl+\\"] = "treeview:toggle" }
+keymap.add { ["mod+\\"] = "treeview:toggle" }
