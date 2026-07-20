@@ -74,6 +74,13 @@ void ren_update_rects(RenRect *rects, int count) {
   static bool initial_frame = true;
   if (initial_frame) {
     SDL_ShowWindow(window);
+#if defined(__APPLE__)
+    // SDL_ShowWindow does not necessarily launch app in the foreground
+    // on macos when launched from the terminal only when the hint is set
+    // https://wiki.libsdl.org/SDL3/SDL_HINT_MAC_BACKGROUND_APP
+    // instead of setting the hint globally we call RaiseWindow on macos
+    SDL_RaiseWindow(window);
+#endif
     initial_frame = false;
   }
 }
