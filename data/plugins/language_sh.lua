@@ -1,0 +1,37 @@
+local syntax = require "core.syntax"
+
+syntax.add {
+  files = { "%.sh$", "%.bash$", "%.zsh$", "%.fish$", "%.bats$" },
+  headers = "^#!.*[ /].*sh",
+  comment = "#",
+  patterns = {
+    { pattern = "$#",                   type = "keyword2" },
+    { pattern = "#.*",                  type = "comment" },
+    { pattern = { '"', '"', '\\' },   type = "string" },
+    { pattern = { "'", "'" },          type = "string" },
+    { pattern = { "`", "`", "\\" },   type = "string" },
+    { pattern = "%${.-}",               type = "keyword2" },
+    { pattern = "$[%a_@*#?%d][%w_]*",  type = "keyword2" },
+    { pattern = "[_%a][%w_]*%f[=]",    type = "keyword2" },
+    { pattern = "%f[%S][%+%-][%w%-_:]+", type = "function" },
+    { pattern = "%d+%.?%d*",            type = "number" },
+    { pattern = "[%+%-=/%*%^%%<>!~|&;:]", type = "operator" },
+    { pattern = "[%a_][%w_%-]*%f[(]",  type = "function" },
+    { pattern = "[%a_][%w_]*",          type = "symbol" },
+  },
+  symbols = {
+    ["case"] = "keyword", ["in"] = "keyword", ["esac"] = "keyword",
+    ["if"] = "keyword", ["then"] = "keyword", ["elif"] = "keyword",
+    ["else"] = "keyword", ["fi"] = "keyword", ["while"] = "keyword",
+    ["do"] = "keyword", ["done"] = "keyword", ["for"] = "keyword",
+    ["function"] = "keyword", ["select"] = "keyword", ["until"] = "keyword",
+    ["break"] = "keyword", ["continue"] = "keyword", ["return"] = "keyword",
+    ["local"] = "keyword", ["export"] = "keyword", ["readonly"] = "keyword",
+    ["declare"] = "keyword", ["typeset"] = "keyword", ["unset"] = "keyword",
+    ["alias"] = "keyword", ["cd"] = "keyword", ["echo"] = "keyword",
+    ["eval"] = "keyword", ["exec"] = "keyword", ["exit"] = "keyword",
+    ["printf"] = "keyword", ["read"] = "keyword", ["set"] = "keyword",
+    ["shift"] = "keyword", ["source"] = "keyword", ["test"] = "keyword",
+    ["true"] = "literal", ["false"] = "literal",
+  },
+}
