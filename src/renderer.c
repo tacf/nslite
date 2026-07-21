@@ -42,15 +42,17 @@ static void* check_alloc(void *ptr) {
 
 static const char* utf8_to_codepoint(const char *p, unsigned *dst) {
   unsigned res, n;
-  switch (*p & 0xf0) {
-    case 0xf0 :  res = *p & 0x07;  n = 3;  break;
-    case 0xe0 :  res = *p & 0x0f;  n = 2;  break;
+  unsigned byte = (unsigned char) *p;
+  switch (byte & 0xf0) {
+    case 0xf0 :  res = byte & 0x07;  n = 3;  break;
+    case 0xe0 :  res = byte & 0x0f;  n = 2;  break;
     case 0xd0 :
-    case 0xc0 :  res = *p & 0x1f;  n = 1;  break;
-    default   :  res = *p;         n = 0;  break;
+    case 0xc0 :  res = byte & 0x1f;  n = 1;  break;
+    default   :  res = byte;         n = 0;  break;
   }
-  while (n--) {
-    res = (res << 6) | (*(++p) & 0x3f);
+  while (n > 0) {
+    res = (res << 6) | ((unsigned char) *(++p) & 0x3f);
+    n--;
   }
   *dst = res;
   return p + 1;
@@ -103,7 +105,8 @@ void ren_get_size(int *x, int *y) {
 
 RenImage* ren_new_image(int width, int height) {
   assert(width > 0 && height > 0);
-  RenImage *image = malloc(sizeof(RenImage) + width * height * sizeof(RenColor));
+  size_t pixel_count = (size_t) width * (size_t) height;
+  RenImage *image = malloc(sizeof(RenImage) + pixel_count * sizeof(RenColor));
   check_alloc(image);
   image->pixels = (void*) (image + 1);
   image->width = width;
@@ -145,10 +148,10 @@ static GlyphSet* load_glyphset(RenFont *font, int idx) {
   int ascent, descent, linegap;
   stbtt_GetFontVMetrics(&font->stbfont, &ascent, &descent, &linegap);
   float scale = stbtt_ScaleForMappingEmToPixels(&font->stbfont, font->size);
-  int scaled_ascent = ascent * scale + 0.5;
+  int scaled_ascent = (int) ((float) ascent * scale + 0.5f);
   for (int i = 0; i < 256; i++) {
-    set->glyphs[i].yoff += scaled_ascent;
-    set->glyphs[i].xadvance = floor(set->glyphs[i].xadvance);
+    set->glyphs[i].yoff += (float) scaled_ascent;
+    set->glyphs[i].xadvance = floorf(set->glyphs[i].xadvance);
   }
 
   /* convert 8bit data to 32bit */
@@ -161,8 +164,8 @@ static GlyphSet* load_glyphset(RenFont *font, int idx) {
 }
 
 
-static GlyphSet* get_glyphset(RenFont *font, int codepoint) {
-  int idx = (codepoint >> 8) % MAX_GLYPHSET;
+static GlyphSet* get_glyphset(RenFont *font, unsigned codepoint) {
+  int idx = (int) ((codepoint >> 8) % MAX_GLYPHSET);
   if (!font->sets[idx]) {
     font->sets[idx] = load_glyphset(font, idx);
   }
@@ -194,7 +197,7 @@ RenFont* ren_load_font(const char *filename, float size) {
   int ascent, descent, linegap;
   stbtt_GetFontVMetrics(&font->stbfont, &ascent, &descent, &linegap);
   float scale = stbtt_ScaleForMappingEmToPixels(&font->stbfont, size);
-  font->height = (ascent - descent + linegap) * scale + 0.5;
+  font->height = (int) ((float) (ascent - descent + linegap) * scale + 0.5f);
 
   /* make tab and newline glyphs invisible */
   stbtt_bakedchar *g = get_glyphset(font, '\n')->glyphs;
@@ -220,13 +223,13 @@ void ren_free_font(RenFont *font) {
 
 void ren_set_font_tab_width(RenFont *font, int n) {
   GlyphSet *set = get_glyphset(font, '\t');
-  set->glyphs['\t'].xadvance = n;
+  set->glyphs['\t'].xadvance = (float) n;
 }
 
 
 int ren_get_font_tab_width(RenFont *font) {
   GlyphSet *set = get_glyphset(font, '\t');
-  return set->glyphs['\t'].xadvance;
+  return (int) set->glyphs['\t'].xadvance;
 }
 
 
@@ -238,7 +241,7 @@ int ren_get_font_width(RenFont *font, const char *text) {
     p = utf8_to_codepoint(p, &codepoint);
     GlyphSet *set = get_glyphset(font, codepoint);
     stbtt_bakedchar *g = &set->glyphs[codepoint & 0xff];
-    x += g->xadvance;
+    x = (int) ((float) x + g->xadvance);
   }
   return x;
 }
@@ -251,19 +254,25 @@ int ren_get_font_height(RenFont *font) {
 
 static inline RenColor blend_pixel(RenColor dst, RenColor src) {
   int ia = 0xff - src.a;
-  dst.r = (src.r * src.a + dst.r * ia + 127) / 255;
-  dst.g = (src.g * src.a + dst.g * ia + 127) / 255;
-  dst.b = (src.b * src.a + dst.b * ia + 127) / 255;
+  dst.r = (uint8_t) ((src.r * src.a + dst.r * ia + 127) / 255);
+  dst.g = (uint8_t) ((src.g * src.a + dst.g * ia + 127) / 255);
+  dst.b = (uint8_t) ((src.b * src.a + dst.b * ia + 127) / 255);
   return dst;
 }
 
 
 static inline RenColor blend_pixel2(RenColor dst, RenColor src, RenColor color) {
-  src.a = (src.a * color.a + 127) / 255;
+  src.a = (uint8_t) ((src.a * color.a + 127) / 255);
   int ia = 0xff - src.a;
-  dst.r = ((src.r * color.r * src.a + 32767) >> 16) + ((dst.r * ia + 127) / 255);
-  dst.g = ((src.g * color.g * src.a + 32767) >> 16) + ((dst.g * ia + 127) / 255);
-  dst.b = ((src.b * color.b * src.a + 32767) >> 16) + ((dst.b * ia + 127) / 255);
+  dst.r = (uint8_t) (
+    ((src.r * color.r * src.a + 32767) >> 16)
+      + ((dst.r * ia + 127) / 255));
+  dst.g = (uint8_t) (
+    ((src.g * color.g * src.a + 32767) >> 16)
+      + ((dst.g * ia + 127) / 255));
+  dst.b = (uint8_t) (
+    ((src.b * color.b * src.a + 32767) >> 16)
+      + ((dst.b * ia + 127) / 255));
   return dst;
 }
 
@@ -347,8 +356,12 @@ int ren_draw_text(RenFont *font, const char *text, int x, int y, RenColor color)
     rect.y = g->y0;
     rect.width = g->x1 - g->x0;
     rect.height = g->y1 - g->y0;
-    ren_draw_image(set->image, &rect, x + g->xoff, y + g->yoff, color);
-    x += g->xadvance;
+    ren_draw_image(
+      set->image, &rect,
+      (int) ((float) x + g->xoff),
+      (int) ((float) y + g->yoff),
+      color);
+    x = (int) ((float) x + g->xadvance);
   }
   return x;
 }
