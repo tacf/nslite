@@ -123,24 +123,23 @@ static GlyphSet* load_glyphset(RenFont *font, int idx) {
   /* init image */
   int width = 128;
   int height = 128;
-retry:
-  set->image = ren_new_image(width, height);
-
-  /* load glyphs */
   float s =
     stbtt_ScaleForMappingEmToPixels(&font->stbfont, 1) /
     stbtt_ScaleForPixelHeight(&font->stbfont, 1);
-  int res = stbtt_BakeFontBitmap(
-    font->data, 0, font->size * s, (void*) set->image->pixels,
-    width, height, idx * 256, 256, set->glyphs);
+  int result;
+  do {
+    set->image = ren_new_image(width, height);
+    result = stbtt_BakeFontBitmap(
+      font->data, 0, font->size * s, (void*) set->image->pixels,
+      width, height, idx * 256, 256, set->glyphs);
 
-  /* retry with a larger image buffer if the buffer wasn't large enough */
-  if (res < 0) {
-    width *= 2;
-    height *= 2;
-    ren_free_image(set->image);
-    goto retry;
-  }
+    /* retry with a larger image buffer if the buffer wasn't large enough */
+    if (result < 0) {
+      width *= 2;
+      height *= 2;
+      ren_free_image(set->image);
+    }
+  } while (result < 0);
 
   /* adjust glyph yoffsets and xadvance */
   int ascent, descent, linegap;

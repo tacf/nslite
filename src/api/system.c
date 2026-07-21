@@ -44,12 +44,8 @@ static int f_poll_event(lua_State *L) {
   SDL_Event e;
   double scale = get_scale();
 
-top:
-  if ( !SDL_PollEvent(&e) ) {
-    return 0;
-  }
-
-  switch (e.type) {
+  while (SDL_PollEvent(&e)) {
+    switch (e.type) {
     case SDL_EVENT_QUIT:
     case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
       lua_pushstring(L, "quit");
@@ -68,7 +64,7 @@ top:
 
     case SDL_EVENT_WINDOW_FOCUS_GAINED:
       SDL_FlushEvent(SDL_EVENT_KEY_DOWN);
-      goto top;
+      break;
 
     case SDL_EVENT_DROP_FILE:
       lua_pushstring(L, "filedropped");
@@ -123,7 +119,8 @@ top:
       return 2;
 
     default:
-      goto top;
+      break;
+    }
   }
 
   return 0;
