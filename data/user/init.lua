@@ -12,3 +12,11 @@ local style = require "core.style"
 
 -- key binding:
 -- keymap.add { ["mod+escape"] = "core:quit" }
+
+-- language servers (clangd for C/C++ is enabled by default):
+-- config.lsp.servers = {
+--   {
+--     command = { "rust-analyzer" },
+--     languages = { { id = "rust", files = { "%.rs$" } } },
+--   },
+-- }

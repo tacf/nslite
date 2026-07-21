@@ -17,4 +17,21 @@ config.indent_size = 2
 config.tab_type = "soft"
 config.line_limit = 80
 
+-- Language servers start lazily, the first time mod is held over a matching
+-- document. Add or replace entries from user/init.lua as needed.
+config.lsp = {
+  servers = {
+    {
+      command = { "clangd", "--background-index" },
+      languages = {
+        { id = "c", files = { "%.c$", "%.h$" } },
+        { id = "cpp", files = {
+          "%.cc$", "%.cp$", "%.cxx$", "%.cpp$", "%.c%+%+$", "%.C$",
+          "%.hh$", "%.hxx$", "%.hpp$", "%.h%+%+$", "%.inl$", "%.ino$",
+        } },
+      },
+    },
+  },
+}
+
 return config

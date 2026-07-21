@@ -12,6 +12,7 @@ Features:
 - Modern styled search in document
 - C-native document management (for increased performance -- improvements to come)
 - C-native PCRE2 tokenizer with document-owned token caching
+- Native LSP integration (basic functionality only - 'click to go to')
 - Built-in TTF and OTF font previews
 
 ## `Document` API
@@ -29,6 +30,17 @@ directly, while owning multiline state, token caches, and edit invalidation.
 Lua only selects and configures the syntax and iterates over the resulting
 tokens for rendering.
 
+## Language servers
+
+Native LSP support provides mod-click definition navigation. Holding `Ctrl`, or
+`Command` on macOS, highlights definitions like links when a language server
+can resolve them; clicking jumps to the target. The status bar shows the
+configured server for the active document type.
+
+The C `lsp` module owns server communication and document synchronization,
+while Lua selects and configures language servers. `clangd` is enabled for C
+and C++ by default and starts lazily when needed.
+
 ## Font preview
 
 Opening a TTF or OTF font displays a scrollable text samples at several sizes.
@@ -36,6 +48,34 @@ The shown glyphs are based on hardcoded strings defined in the plugin lua code,
 so they may not match exactly what you'd expect to see (you can check the icons
 font file used by this editor that is present in the main data/ folder as an
 example of this).
+
+## Development
+
+### CMake
+
+CMake 3.20 or newer is the underlying build system. Configure and build a debug
+version with:
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+```
+
+Use `Release` instead of `Debug` for an optimized build. Some project
+dependencies are downloaded by CMake when the build directory is first
+configured.
+
+### Make
+
+The Makefile provides shortcuts for the common CMake commands:
+
+```sh
+make          # debug build
+make release  # release build
+make run      # debug build, then run the editor
+make clean    # remove the build directory
+```
+
 
 ## License
 

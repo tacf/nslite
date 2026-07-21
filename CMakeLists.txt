@@ -74,16 +74,24 @@ endif()
 file(GLOB_RECURSE STB_SOURCES CONFIGURE_DEPENDS src/lib/stb/*.c)
 add_library(nsl_stb STATIC ${STB_SOURCES})
 
+add_library(nsl_cjson STATIC src/lib/cjson/cJSON.c)
+target_include_directories(nsl_cjson PUBLIC src/lib/cjson)
+target_compile_definitions(nsl_cjson PRIVATE CJSON_NESTING_LIMIT=64)
+
 set(NSLITE_SOURCES
     src/main.c
     src/renderer.c
     src/rencache.c
+    src/utils/path.c
+    src/utils/utf8.c
+    src/utils/window.c
     src/api/api.c
     src/api/renderer.c
     src/api/renderer_font.c
     src/api/system.c
     src/api/document.c
     src/api/syntax.c
+    src/api/lsp.c
 )
 
 add_executable(nsl ${NSLITE_SOURCES})
@@ -91,7 +99,7 @@ nslite_enable_strict_warnings(nsl)
 
 target_include_directories(nsl PRIVATE src)
 
-target_link_libraries(nsl PRIVATE SDL3::SDL3 lua nsl_stb pcre2-8-static)
+target_link_libraries(nsl PRIVATE SDL3::SDL3 lua nsl_stb nsl_cjson pcre2-8-static)
 
 if(UNIX)
     target_link_libraries(nsl PRIVATE m)

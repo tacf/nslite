@@ -4,16 +4,10 @@
 #include <SDL3/SDL.h>
 #include "api/api.h"
 #include "renderer.h"
+#include "utils/window.h"
 
 
 SDL_Window *window;
-
-
-static double get_scale(void) {
-  float s = SDL_GetWindowDisplayScale(window);
-  return s > 0 ? s : 1.0;
-}
-
 
 
 static void get_exe_filename(const char *argv0, char *buf, size_t size) {
@@ -25,9 +19,8 @@ static void get_exe_filename(const char *argv0, char *buf, size_t size) {
   basename = basename ? basename + 1 : argv0;
 
   const char *basepath = SDL_GetBasePath();
-  int written = basepath
-    ? SDL_snprintf(buf, size, "%s%s", basepath, basename)
-    : -1;
+  int written =
+    basepath ? SDL_snprintf(buf, size, "%s%s", basepath, basename) : -1;
   if (written >= 0 && (size_t) written < size) { return; }
 
   SDL_strlcpy(buf, argv0, size);
@@ -35,13 +28,10 @@ static void get_exe_filename(const char *argv0, char *buf, size_t size) {
 
 
 static void init_window_icon(void) {
-  #include "../icon.inl"
+#include "../icon.inl"
   (void) icon_rgba_len;
-  SDL_Surface *surf = SDL_CreateSurfaceFrom(
-    64, 64,
-    SDL_PIXELFORMAT_RGBA32,
-    icon_rgba,
-    64 * 4);
+  SDL_Surface *surf =
+    SDL_CreateSurfaceFrom(64, 64, SDL_PIXELFORMAT_RGBA32, icon_rgba, 64 * 4);
   SDL_SetWindowIcon(window, surf);
   SDL_DestroySurface(surf);
 }
@@ -54,12 +44,12 @@ int main(int argc, char **argv) {
   SDL_SetHint(SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR, "0");
   SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
 
-  const SDL_DisplayMode *dm = SDL_GetCurrentDisplayMode(SDL_GetPrimaryDisplay());
+  const SDL_DisplayMode *dm =
+    SDL_GetCurrentDisplayMode(SDL_GetPrimaryDisplay());
   int dw = dm ? dm->w : 1280;
   int dh = dm ? dm->h : 720;
 
-  window = SDL_CreateWindow(
-    "", dw * 4 / 5, dh * 4 / 5,
+  window = SDL_CreateWindow("", dw * 4 / 5, dh * 4 / 5,
     SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY);
   if (!window) {
     fprintf(stderr, "Failed to create window: %s\n", SDL_GetError());
@@ -88,7 +78,7 @@ int main(int argc, char **argv) {
   lua_pushstring(L, SDL_GetPlatform());
   lua_setglobal(L, "PLATFORM");
 
-  lua_pushnumber(L, get_scale());
+  lua_pushnumber(L, window_get_scale(window));
   lua_setglobal(L, "SCALE");
 
   char exename[2048];

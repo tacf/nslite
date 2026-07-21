@@ -3,8 +3,10 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <math.h>
+#include <string.h>
 #include "lib/stb/stb_truetype.h"
 #include "renderer.h"
+#include "utils/utf8.h"
 
 #define MAX_GLYPHSET 256
 
@@ -28,34 +30,17 @@ struct RenFont {
 
 
 static SDL_Window *window;
-static struct { int left, top, right, bottom; } clip;
+static struct {
+  int left, top, right, bottom;
+} clip;
 
 
-static void* check_alloc(void *ptr) {
+static void *check_alloc(void *ptr) {
   if (!ptr) {
     fprintf(stderr, "Fatal error: memory allocation failed\n");
     exit(EXIT_FAILURE);
   }
   return ptr;
-}
-
-
-static const char* utf8_to_codepoint(const char *p, unsigned *dst) {
-  unsigned res, n;
-  unsigned byte = (unsigned char) *p;
-  switch (byte & 0xf0) {
-    case 0xf0 :  res = byte & 0x07;  n = 3;  break;
-    case 0xe0 :  res = byte & 0x0f;  n = 2;  break;
-    case 0xd0 :
-    case 0xc0 :  res = byte & 0x1f;  n = 1;  break;
-    default   :  res = byte;         n = 0;  break;
-  }
-  while (n > 0) {
-    res = (res << 6) | ((unsigned char) *(++p) & 0x3f);
-    n--;
-  }
-  *dst = res;
-  return p + 1;
 }
 
 
@@ -67,12 +52,12 @@ void ren_init(SDL_Window *win) {
     fprintf(stderr, "Warning: unexpected pixel format %s (expected ARGB8888)\n",
       SDL_GetPixelFormatName(surf->format));
   }
-  ren_set_clip_rect( (RenRect) { 0, 0, surf->w, surf->h } );
+  ren_set_clip_rect((RenRect) { 0, 0, surf->w, surf->h });
 }
 
 
 void ren_update_rects(RenRect *rects, int count) {
-  SDL_UpdateWindowSurfaceRects(window, (SDL_Rect*) rects, count);
+  SDL_UpdateWindowSurfaceRects(window, (SDL_Rect *) rects, count);
   static bool initial_frame = true;
   if (initial_frame) {
     SDL_ShowWindow(window);
@@ -89,9 +74,9 @@ void ren_update_rects(RenRect *rects, int count) {
 
 
 void ren_set_clip_rect(RenRect rect) {
-  clip.left   = rect.x;
-  clip.top    = rect.y;
-  clip.right  = rect.x + rect.width;
+  clip.left = rect.x;
+  clip.top = rect.y;
+  clip.right = rect.x + rect.width;
   clip.bottom = rect.y + rect.height;
 }
 
@@ -103,38 +88,34 @@ void ren_get_size(int *x, int *y) {
 }
 
 
-RenImage* ren_new_image(int width, int height) {
+RenImage *ren_new_image(int width, int height) {
   assert(width > 0 && height > 0);
   size_t pixel_count = (size_t) width * (size_t) height;
   RenImage *image = malloc(sizeof(RenImage) + pixel_count * sizeof(RenColor));
   check_alloc(image);
-  image->pixels = (void*) (image + 1);
+  image->pixels = (void *) (image + 1);
   image->width = width;
   image->height = height;
   return image;
 }
 
 
-void ren_free_image(RenImage *image) {
-  free(image);
-}
+void ren_free_image(RenImage *image) { free(image); }
 
 
-static GlyphSet* load_glyphset(RenFont *font, int idx) {
+static GlyphSet *load_glyphset(RenFont *font, int idx) {
   GlyphSet *set = check_alloc(calloc(1, sizeof(GlyphSet)));
 
   /* init image */
   int width = 128;
   int height = 128;
-  float s =
-    stbtt_ScaleForMappingEmToPixels(&font->stbfont, 1) /
-    stbtt_ScaleForPixelHeight(&font->stbfont, 1);
+  float s = stbtt_ScaleForMappingEmToPixels(&font->stbfont, 1)
+    / stbtt_ScaleForPixelHeight(&font->stbfont, 1);
   int result;
   do {
     set->image = ren_new_image(width, height);
-    result = stbtt_BakeFontBitmap(
-      font->data, 0, font->size * s, (void*) set->image->pixels,
-      width, height, idx * 256, 256, set->glyphs);
+    result = stbtt_BakeFontBitmap(font->data, 0, font->size * s,
+      (void *) set->image->pixels, width, height, idx * 256, 256, set->glyphs);
 
     /* retry with a larger image buffer if the buffer wasn't large enough */
     if (result < 0) {
@@ -156,7 +137,7 @@ static GlyphSet* load_glyphset(RenFont *font, int idx) {
 
   /* convert 8bit data to 32bit */
   for (int i = width * height - 1; i >= 0; i--) {
-    uint8_t n = *((uint8_t*) set->image->pixels + i);
+    uint8_t n = *((uint8_t *) set->image->pixels + i);
     set->image->pixels[i] = (RenColor) { .r = 255, .g = 255, .b = 255, .a = n };
   }
 
@@ -164,16 +145,14 @@ static GlyphSet* load_glyphset(RenFont *font, int idx) {
 }
 
 
-static GlyphSet* get_glyphset(RenFont *font, unsigned codepoint) {
+static GlyphSet *get_glyphset(RenFont *font, unsigned codepoint) {
   int idx = (int) ((codepoint >> 8) % MAX_GLYPHSET);
-  if (!font->sets[idx]) {
-    font->sets[idx] = load_glyphset(font, idx);
-  }
+  if (!font->sets[idx]) { font->sets[idx] = load_glyphset(font, idx); }
   return font->sets[idx];
 }
 
 
-RenFont* ren_load_font(const char *filename, float size) {
+RenFont *ren_load_font(const char *filename, float size) {
   /* init font */
   RenFont *font = check_alloc(calloc(1, sizeof(RenFont)));
   font->size = size;
@@ -236,9 +215,10 @@ int ren_get_font_tab_width(RenFont *font) {
 int ren_get_font_width(RenFont *font, const char *text) {
   int x = 0;
   const char *p = text;
-  unsigned codepoint;
-  while (*p) {
-    p = utf8_to_codepoint(p, &codepoint);
+  const char *end = text + strlen(text);
+  uint32_t codepoint;
+  while (p < end) {
+    p = utf8_decode(p, end, &codepoint);
     GlyphSet *set = get_glyphset(font, codepoint);
     stbtt_bakedchar *g = &set->glyphs[codepoint & 0xff];
     x = (int) ((float) x + g->xadvance);
@@ -247,9 +227,7 @@ int ren_get_font_width(RenFont *font, const char *text) {
 }
 
 
-int ren_get_font_height(RenFont *font) {
-  return font->height;
-}
+int ren_get_font_height(RenFont *font) { return font->height; }
 
 
 static inline RenColor blend_pixel(RenColor dst, RenColor src) {
@@ -261,43 +239,41 @@ static inline RenColor blend_pixel(RenColor dst, RenColor src) {
 }
 
 
-static inline RenColor blend_pixel2(RenColor dst, RenColor src, RenColor color) {
+static inline RenColor blend_pixel2(
+  RenColor dst, RenColor src, RenColor color) {
   src.a = (uint8_t) ((src.a * color.a + 127) / 255);
   int ia = 0xff - src.a;
-  dst.r = (uint8_t) (
-    ((src.r * color.r * src.a + 32767) >> 16)
-      + ((dst.r * ia + 127) / 255));
-  dst.g = (uint8_t) (
-    ((src.g * color.g * src.a + 32767) >> 16)
-      + ((dst.g * ia + 127) / 255));
-  dst.b = (uint8_t) (
-    ((src.b * color.b * src.a + 32767) >> 16)
-      + ((dst.b * ia + 127) / 255));
+  dst.r = (uint8_t) (((src.r * color.r * src.a + 32767) >> 16)
+    + ((dst.r * ia + 127) / 255));
+  dst.g = (uint8_t) (((src.g * color.g * src.a + 32767) >> 16)
+    + ((dst.g * ia + 127) / 255));
+  dst.b = (uint8_t) (((src.b * color.b * src.a + 32767) >> 16)
+    + ((dst.b * ia + 127) / 255));
   return dst;
 }
 
 
-#define rect_draw_loop(expr)        \
-  for (int j = y1; j < y2; j++) {   \
-    for (int i = x1; i < x2; i++) { \
-      *d = expr;                    \
-      d++;                          \
-    }                               \
-    d += dr;                        \
+#define rect_draw_loop(expr)                                                   \
+  for (int j = y1; j < y2; j++) {                                              \
+    for (int i = x1; i < x2; i++) {                                            \
+      *d = expr;                                                               \
+      d++;                                                                     \
+    }                                                                          \
+    d += dr;                                                                   \
   }
 
 void ren_draw_rect(RenRect rect, RenColor color) {
   if (color.a == 0) { return; }
 
   int x1 = rect.x < clip.left ? clip.left : rect.x;
-  int y1 = rect.y < clip.top  ? clip.top  : rect.y;
+  int y1 = rect.y < clip.top ? clip.top : rect.y;
   int x2 = rect.x + rect.width;
   int y2 = rect.y + rect.height;
-  x2 = x2 > clip.right  ? clip.right  : x2;
+  x2 = x2 > clip.right ? clip.right : x2;
   y2 = y2 > clip.bottom ? clip.bottom : y2;
 
   SDL_Surface *surf = SDL_GetWindowSurface(window);
-  RenColor *d = (RenColor*) surf->pixels;
+  RenColor *d = (RenColor *) surf->pixels;
   d += x1 + y1 * surf->w;
   int dr = surf->w - (x2 - x1);
 
@@ -309,24 +285,31 @@ void ren_draw_rect(RenRect rect, RenColor color) {
 }
 
 
-void ren_draw_image(RenImage *image, RenRect *sub, int x, int y, RenColor color) {
+void ren_draw_image(
+  RenImage *image, RenRect *sub, int x, int y, RenColor color) {
   if (color.a == 0) { return; }
 
   /* clip */
   int n;
-  if ((n = clip.left - x) > 0) { sub->width  -= n; sub->x += n; x += n; }
-  if ((n = clip.top  - y) > 0) { sub->height -= n; sub->y += n; y += n; }
-  if ((n = x + sub->width  - clip.right ) > 0) { sub->width  -= n; }
+  if ((n = clip.left - x) > 0) {
+    sub->width -= n;
+    sub->x += n;
+    x += n;
+  }
+  if ((n = clip.top - y) > 0) {
+    sub->height -= n;
+    sub->y += n;
+    y += n;
+  }
+  if ((n = x + sub->width - clip.right) > 0) { sub->width -= n; }
   if ((n = y + sub->height - clip.bottom) > 0) { sub->height -= n; }
 
-  if (sub->width <= 0 || sub->height <= 0) {
-    return;
-  }
+  if (sub->width <= 0 || sub->height <= 0) { return; }
 
   /* draw */
   SDL_Surface *surf = SDL_GetWindowSurface(window);
   RenColor *s = image->pixels;
-  RenColor *d = (RenColor*) surf->pixels;
+  RenColor *d = (RenColor *) surf->pixels;
   s += sub->x + sub->y * image->width;
   d += x + y * surf->w;
   int sr = image->width - sub->width;
@@ -344,23 +327,22 @@ void ren_draw_image(RenImage *image, RenRect *sub, int x, int y, RenColor color)
 }
 
 
-int ren_draw_text(RenFont *font, const char *text, int x, int y, RenColor color) {
+int ren_draw_text(
+  RenFont *font, const char *text, int x, int y, RenColor color) {
   RenRect rect;
   const char *p = text;
-  unsigned codepoint;
-  while (*p) {
-    p = utf8_to_codepoint(p, &codepoint);
+  const char *end = text + strlen(text);
+  uint32_t codepoint;
+  while (p < end) {
+    p = utf8_decode(p, end, &codepoint);
     GlyphSet *set = get_glyphset(font, codepoint);
     stbtt_bakedchar *g = &set->glyphs[codepoint & 0xff];
     rect.x = g->x0;
     rect.y = g->y0;
     rect.width = g->x1 - g->x0;
     rect.height = g->y1 - g->y0;
-    ren_draw_image(
-      set->image, &rect,
-      (int) ((float) x + g->xoff),
-      (int) ((float) y + g->yoff),
-      color);
+    ren_draw_image(set->image, &rect, (int) ((float) x + g->xoff),
+      (int) ((float) y + g->yoff), color);
     x = (int) ((float) x + g->xadvance);
   }
   return x;
