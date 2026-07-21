@@ -2,38 +2,9 @@ local Object = require "core.object"
 local Highlighter = require "core.doc.highlighter"
 local syntax = require "core.syntax"
 local config = require "core.config"
-local common = require "core.common"
 
 
 local Doc = Object:extend()
-
-
-local function split_lines(text)
-  local res = {}
-  for line in (text .. "\n"):gmatch("(.-)\n") do
-    table.insert(res, line)
-  end
-  return res
-end
-
-
-local function splice(t, at, remove, insert)
-  insert = insert or {}
-  local offset = #insert - remove
-  local old_len = #t
-  if offset < 0 then
-    for i = at - offset, old_len - offset do
-      t[i + offset] = t[i]
-    end
-  elseif offset > 0 then
-    for i = old_len, at, -1 do
-      t[i + offset] = t[i]
-    end
-  end
-  for i, item in ipairs(insert) do
-    t[at + i - 1] = item
-  end
-end
 
 
 function Doc:new(filename)
@@ -45,7 +16,11 @@ end
 
 
 function Doc:reset()
-  self.lines = { "\n" }
+  if self._document then
+    self._document:reset()
+  else
+    self._document = document.new()
+  end
   self.selection = { a = { line=1, col=1 }, b = { line=1, col=1 } }
   self.undo_stack = { idx = 1 }
   self.redo_stack = { idx = 1 }
@@ -57,7 +32,7 @@ end
 
 function Doc:reset_syntax()
   local header = self:get_text(1, 1, self:position_offset(1, 1, 128))
-  local syn = syntax.get(self.filename or "", header)
+  local syn = syntax.get(self:get_filename() or "", header)
   if self.syntax ~= syn then
     self.syntax = syn
     self.highlighter:reset()
@@ -66,43 +41,62 @@ end
 
 
 function Doc:load(filename)
-  local fp = assert( io.open(filename, "rb") )
-  self:reset()
-  self.filename = filename
-  self.lines = {}
-  for rawline in fp:lines() do
-    local line = rawline
-    if line:byte(-1) == 13 then
-      line = line:sub(1, -2)
-      self.crlf = true
-    end
-    table.insert(self.lines, line .. "\n")
-  end
-  if #self.lines == 0 then
-    table.insert(self.lines, "\n")
-  end
-  fp:close()
+  local native = self._document or document.new()
+  assert(native:load(filename))
+  self._document = native
+  self.selection = { a = { line=1, col=1 }, b = { line=1, col=1 } }
+  self.undo_stack = { idx = 1 }
+  self.redo_stack = { idx = 1 }
+  self.clean_change_id = 1
+  self.highlighter = Highlighter(self)
   self:reset_syntax()
 end
 
 
 function Doc:save(filename)
-  filename = filename or assert(self.filename, "no filename set to default to")
-  local fp = assert( io.open(filename, "wb") )
-  for _, rawline in ipairs(self.lines) do
-    local line = rawline
-    if self.crlf then line = line:gsub("\n", "\r\n") end
-    fp:write(line)
-  end
-  fp:close()
-  self.filename = filename or self.filename
+  assert(self._document:save(filename))
   self:reset_syntax()
   self:clean()
 end
 
 
 function Doc:get_name()
-  return self.filename or "unsaved"
+  return self:get_filename() or "unsaved"
+end
+
+
+function Doc:get_filename()
+  return self._document:filename()
+end
+
+
+function Doc:is_crlf()
+  return self._document:is_crlf()
+end
+
+
+function Doc:set_crlf(enabled)
+  self._document:set_crlf(enabled)
+end
+
+
+function Doc:line_count()
+  return self._document:line_count()
+end
+
+
+function Doc:get_line(line)
+  return self._document:get_line(line)
+end
+
+
+function Doc:each_line()
+  local line = 0
+  return function()
+    line = line + 1
+    local text = self:get_line(line)
+    if text then return line, text end
+  end
 end
 
 
@@ -161,9 +155,7 @@ end
 
 
 function Doc:sanitize_position(line, col)
-  line = common.clamp(line, 1, #self.lines)
-  col = common.clamp(col, 1, #self.lines[line])
-  return line, col
+  return self._document:sanitize_position(line, col)
 end
 
 
@@ -174,17 +166,7 @@ end
 
 
 local function position_offset_byte(self, line, col, offset)
-  line, col = self:sanitize_position(line, col)
-  col = col + offset
-  while line > 1 and col < 1 do
-    line = line - 1
-    col = col + #self.lines[line]
-  end
-  while line < #self.lines and col > #self.lines[line] do
-    col = col - #self.lines[line]
-    line = line + 1
-  end
-  return self:sanitize_position(line, col)
+  return self._document:position_offset(line, col, offset)
 end
 
 
@@ -207,24 +189,12 @@ end
 
 
 function Doc:get_text(line1, col1, line2, col2)
-  line1, col1 = self:sanitize_position(line1, col1)
-  line2, col2 = self:sanitize_position(line2, col2)
-  line1, col1, line2, col2 = sort_positions(line1, col1, line2, col2)
-  if line1 == line2 then
-    return self.lines[line1]:sub(col1, col2 - 1)
-  end
-  local lines = { self.lines[line1]:sub(col1) }
-  for i = line1 + 1, line2 - 1 do
-    table.insert(lines, self.lines[i])
-  end
-  table.insert(lines, self.lines[line2]:sub(1, col2 - 1))
-  return table.concat(lines)
+  return self._document:get_text(line1, col1, line2, col2)
 end
 
 
 function Doc:get_char(line, col)
-  line, col = self:sanitize_position(line, col)
-  return self.lines[line]:sub(col, col)
+  return self._document:get_char(line, col)
 end
 
 
@@ -265,21 +235,9 @@ end
 
 
 function Doc:raw_insert(line, col, text, undo_stack, time)
-  -- split text into lines and merge with line at insertion point
-  local lines = split_lines(text)
-  local before = self.lines[line]:sub(1, col - 1)
-  local after = self.lines[line]:sub(col)
-  for i = 1, #lines - 1 do
-    lines[i] = lines[i] .. "\n"
-  end
-  lines[1] = before .. lines[1]
-  lines[#lines] = lines[#lines] .. after
-
-  -- splice lines into line array
-  splice(self.lines, line, 1, lines)
+  local line2, col2 = self._document:insert(line, col, text)
 
   -- push undo
-  local line2, col2 = self:position_offset(line, col, #text)
   push_undo(undo_stack, time, "selection", self:get_selection())
   push_undo(undo_stack, time, "remove", line, col, line2, col2)
 
@@ -295,12 +253,7 @@ function Doc:raw_remove(line1, col1, line2, col2, undo_stack, time)
   push_undo(undo_stack, time, "selection", self:get_selection())
   push_undo(undo_stack, time, "insert", line1, col1, text)
 
-  -- get line content before/after removed text
-  local before = self.lines[line1]:sub(1, col1 - 1)
-  local after = self.lines[line2]:sub(col2)
-
-  -- splice line into line array
-  splice(self.lines, line1, line2 - line1 + 1, { before .. after })
+  self._document:remove(line1, col1, line2, col2)
 
   -- update highlighter and assure selection is in bounds
   self.highlighter:invalidate(line1)
@@ -334,6 +287,11 @@ function Doc:redo()
 end
 
 
+function Doc:get_revision()
+  return self._document:revision()
+end
+
+
 function Doc:text_input(text)
   if self:has_selection() then
     self:delete_to()
@@ -350,7 +308,8 @@ function Doc:replace(fn)
   if had_selection then
     line1, col1, line2, col2, swap = self:get_selection(true)
   else
-    line1, col1, line2, col2 = 1, 1, #self.lines, #self.lines[#self.lines]
+    local last_line = self:line_count()
+    line1, col1, line2, col2 = 1, 1, last_line, #self:get_line(last_line)
   end
   local old_text = self:get_text(line1, col1, line2, col2)
   local new_text, n = fn(old_text)

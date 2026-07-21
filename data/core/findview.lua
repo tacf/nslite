@@ -23,7 +23,7 @@ local function make_matches(doc, text)
   if text == "" then return state end
 
   local needle = text:lower()
-  for line, line_text in ipairs(doc.lines) do
+  for line, line_text in doc:each_line() do
     local haystack = line_text:lower()
     local start = 1
     while true do

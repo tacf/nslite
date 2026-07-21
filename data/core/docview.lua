@@ -40,8 +40,8 @@ DocView.translate = {
   end,
 
   ["next_line"] = function(doc, line, col, dv)
-    if line == #doc.lines then
-      return #doc.lines, math.huge
+    if line == doc:line_count() then
+      return doc:line_count(), math.huge
     end
     return move_to_line_offset(dv, line, col, 1)
   end,
@@ -91,7 +91,7 @@ end
 
 
 function DocView:get_scrollable_size()
-  return self:get_line_height() * (#self.doc.lines - 1) + self.size.y
+  return self:get_line_height() * (self.doc:line_count() - 1) + self.size.y
 end
 
 
@@ -106,7 +106,7 @@ end
 
 
 function DocView:get_gutter_width()
-  return self:get_font():get_width(#self.doc.lines) + style.padding.x * 2
+  return self:get_font():get_width(self.doc:line_count()) + style.padding.x * 2
 end
 
 
@@ -129,20 +129,20 @@ function DocView:get_visible_line_range()
   local x, y, x2, y2 = self:get_content_bounds()
   local lh = self:get_line_height()
   local minline = math.max(1, math.floor(y / lh))
-  local maxline = math.min(#self.doc.lines, math.floor(y2 / lh) + 1)
+  local maxline = math.min(self.doc:line_count(), math.floor(y2 / lh) + 1)
   return minline, maxline
 end
 
 
 function DocView:get_col_x_offset(line, col)
-  local text = self.doc.lines[line]
+  local text = self.doc:get_line(line)
   if not text then return 0 end
   return self:get_font():get_width(text:sub(1, col - 1))
 end
 
 
 function DocView:get_x_offset_col(line, x)
-  local text = self.doc.lines[line]
+  local text = self.doc:get_line(line)
 
   local xoffset, last_i, i = 0, 1, 1
   for char in common.utf8_chars(text) do
@@ -162,7 +162,7 @@ end
 function DocView:resolve_screen_position(x, y)
   local ox, oy = self:get_line_screen_position(1)
   local line = math.floor((y - oy) / self:get_line_height()) + 1
-  line = common.clamp(line, 1, #self.doc.lines)
+  line = common.clamp(line, 1, self.doc:line_count())
   local col = self:get_x_offset_col(line, x - ox)
   return line, col
 end
@@ -201,7 +201,7 @@ local function mouse_selection(doc, clicks, line1, col1, line2, col2)
     line1, col1 = translate.start_of_word(doc, line1, col1)
     line2, col2 = translate.end_of_word(doc, line2, col2)
   elseif clicks == 3 then
-    if line2 == #doc.lines and doc.lines[#doc.lines] ~= "\n" then
+    if line2 == doc:line_count() and doc:get_line(doc:line_count()) ~= "\n" then
       doc:insert(math.huge, math.huge, "\n")
     end
     line1, col1, line2, col2 = line1, 1, line2 + 1, 1
@@ -324,7 +324,7 @@ function DocView:draw_line_body(idx, x, y)
   -- draw selection if it overlaps this line
   local line1, col1, line2, col2 = self.doc:get_selection(true)
   if idx >= line1 and idx <= line2 then
-    local text = self.doc.lines[idx]
+    local text = self.doc:get_line(idx)
     if line1 ~= idx then col1 = 1 end
     if line2 ~= idx then col2 = #text + 1 end
     local x1 = x + self:get_col_x_offset(idx, col1)

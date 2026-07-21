@@ -30,8 +30,8 @@ end
 function search.find(doc, line, col, text, opt)
   doc, line, col, text, opt = init_args(doc, line, col, text, opt)
 
-  for line = line, #doc.lines do
-    local line_text = doc.lines[line]
+  for line = line, doc:line_count() do
+    local line_text = doc:get_line(line)
     if opt.no_case then
       line_text = line_text:lower()
     end

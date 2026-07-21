@@ -9,6 +9,14 @@ Text editor based or [rxi/lite](https://github.com/rxi/lite)
 Features:
 - Modern styled command prompt
 - Modern styled search in document
+- C-Native document managment (for increased performance -- improvements to come)
+
+## `Document` API
+
+Document contents, filenames, line endings, file I/O, position traversal, and
+text edits are owned by the C `document` module. The Lua `Doc` class remains the
+editor-facing facade for selections, undo grouping, syntax highlighting, and
+commands.
 
 ## License
 This project is free software; you can redistribute it and/or modify it under

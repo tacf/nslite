@@ -6,24 +6,18 @@ local Doc = require "core.doc"
 local times = setmetatable({}, { __mode = "k" })
 
 local function update_time(doc)
-  local info = system.get_file_info(doc.filename)
+  local info = system.get_file_info(doc:get_filename())
   times[doc] = info.modified
 end
 
 
 local function reload_doc(doc)
-  local fp = io.open(doc.filename, "r")
-  local text = fp:read("*a")
-  fp:close()
-
   local sel = { doc:get_selection() }
-  doc:remove(1, 1, math.huge, math.huge)
-  doc:insert(1, 1, text:gsub("\r", ""):gsub("\n$", ""))
+  local filename = doc:get_filename()
+  doc:load(filename)
   doc:set_selection(table.unpack(sel))
 
-  update_time(doc)
-  doc:clean()
-  core.log_quiet("Auto-reloaded doc \"%s\"", doc.filename)
+  core.log_quiet("Auto-reloaded doc \"%s\"", filename)
 end
 
 
@@ -31,7 +25,7 @@ core.add_thread(function()
   while true do
     -- check all doc modified times
     for _, doc in ipairs(core.docs) do
-      local info = system.get_file_info(doc.filename or "")
+      local info = system.get_file_info(doc:get_filename() or "")
       if info and times[doc] ~= info.modified then
         reload_doc(doc)
       end

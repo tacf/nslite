@@ -272,8 +272,9 @@ function core.open_doc(filename)
     -- try to find existing doc for filename
     local abs_filename = system.absolute_path(filename)
     for _, doc in ipairs(core.docs) do
-      if doc.filename
-      and abs_filename == system.absolute_path(doc.filename) then
+      local doc_filename = doc:get_filename()
+      if doc_filename
+      and abs_filename == system.absolute_path(doc_filename) then
         return doc
       end
     end
@@ -490,8 +491,9 @@ function core.on_error(err)
   fp:close()
   -- save copy of all unsaved documents
   for _, doc in ipairs(core.docs) do
-    if doc:is_dirty() and doc.filename then
-      doc:save(doc.filename .. "~")
+    local filename = doc:get_filename()
+    if doc:is_dirty() and filename then
+      doc:save(filename .. "~")
     end
   end
 end

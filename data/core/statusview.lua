@@ -98,7 +98,7 @@ function StatusView:get_items()
     return {
       dirty and style.accent or style.text, style.icon_font, "f",
       style.dim, style.font, self.separator2, style.text,
-      dv.doc.filename and style.text or style.dim, dv.doc:get_name(),
+      dv.doc:get_filename() and style.text or style.dim, dv.doc:get_name(),
       style.text,
       self.separator,
       "line: ", line,
@@ -106,13 +106,13 @@ function StatusView:get_items()
       col > config.line_limit and style.accent or style.text, "col: ", col,
       style.text,
       self.separator,
-      string.format("%d%%", math.floor(line / #dv.doc.lines * 100)),
+      string.format("%d%%", math.floor(line / dv.doc:line_count() * 100)),
     }, {
       style.icon_font, "g",
       style.font, style.dim, self.separator2, style.text,
-      #dv.doc.lines, " lines",
+      dv.doc:line_count(), " lines",
       self.separator,
-      dv.doc.crlf and "CRLF" or "LF"
+      dv.doc:is_crlf() and "CRLF" or "LF"
     }
   end
 

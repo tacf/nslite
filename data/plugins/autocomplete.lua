@@ -32,8 +32,8 @@ core.add_thread(function()
   local function get_symbols(doc)
     local i = 1
     local s = {}
-    while i < #doc.lines do
-      for sym in doc.lines[i]:gmatch(config.symbol_pattern) do
+    while i < doc:line_count() do
+      for sym in doc:get_line(i):gmatch(config.symbol_pattern) do
         s[sym] = true
       end
       i = i + 1
@@ -98,7 +98,7 @@ end
 
 local function update_suggestions()
   local doc = core.active_view.doc
-  local filename = doc and doc.filename or ""
+  local filename = doc and doc:get_filename() or ""
 
   -- get all relevant suggestions for given filename
   local items = {}

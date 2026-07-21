@@ -62,6 +62,7 @@ set(NSLITE_SOURCES
     src/api/renderer.c
     src/api/renderer_font.c
     src/api/system.c
+    src/api/document.c
 )
 
 add_executable(nsl ${NSLITE_SOURCES} ${STB_SOURCES})

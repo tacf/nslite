@@ -27,7 +27,7 @@ end
 local function insert_at_start_of_selected_lines(text, skip_empty)
   local line1, col1, line2, col2, swap = doc():get_selection(true)
   for line = line1, line2 do
-    local line_text = doc().lines[line]
+    local line_text = doc():get_line(line)
     if (not skip_empty or line_text:find("%S")) then
       doc():insert(line, 1, text)
     end
@@ -39,7 +39,7 @@ end
 local function remove_from_start_of_selected_lines(text, skip_empty)
   local line1, col1, line2, col2, swap = doc():get_selection(true)
   for line = line1, line2 do
-    local line_text = doc().lines[line]
+    local line_text = doc():get_line(line)
     if  line_text:sub(1, #text) == text
     and (not skip_empty or line_text:find("%S"))
     then
@@ -51,7 +51,7 @@ end
 
 
 local function append_line_if_last_line(line)
-  if line >= #doc().lines then
+  if line >= doc():line_count() then
     doc():insert(line, math.huge, "\n")
   end
 end
@@ -59,7 +59,7 @@ end
 
 local function save(filename)
   doc():save(filename)
-  core.log("Saved \"%s\"", doc().filename)
+  core.log("Saved \"%s\"", doc():get_filename())
 end
 
 
@@ -93,7 +93,7 @@ local commands = {
 
   ["doc:newline"] = function()
     local line, col = doc():get_selection()
-    local indent = doc().lines[line]:match("^[\t ]*")
+    local indent = doc():get_line(line):match("^[\t ]*")
     if col <= #indent then
       indent = indent:sub(#indent + 2 - col)
     end
@@ -102,21 +102,21 @@ local commands = {
 
   ["doc:newline-below"] = function()
     local line = doc():get_selection()
-    local indent = doc().lines[line]:match("^[\t ]*")
+    local indent = doc():get_line(line):match("^[\t ]*")
     doc():insert(line, math.huge, "\n" .. indent)
     doc():set_selection(line + 1, math.huge)
   end,
 
   ["doc:newline-above"] = function()
     local line = doc():get_selection()
-    local indent = doc().lines[line]:match("^[\t ]*")
+    local indent = doc():get_line(line):match("^[\t ]*")
     doc():insert(line, 1, indent .. "\n")
     doc():set_selection(line, math.huge)
   end,
 
   ["doc:delete"] = function()
     local line, col = doc():get_selection()
-    if not doc():has_selection() and doc().lines[line]:find("^%s*$", col) then
+    if not doc():has_selection() and doc():get_line(line):find("^%s*$", col) then
       doc():remove(line, col, line, math.huge)
     end
     doc():delete_to(translate.next_char)
@@ -204,7 +204,7 @@ local commands = {
     local line1, col1, line2, col2, swap = doc():get_selection(true)
     append_line_if_last_line(line2)
     if line1 > 1 then
-      local text = doc().lines[line1 - 1]
+      local text = doc():get_line(line1 - 1)
       doc():insert(line2 + 1, 1, text)
       doc():remove(line1 - 1, 1, line1, 1)
       doc():set_selection(line1 - 1, col1, line2 - 1, col2, swap)
@@ -214,8 +214,8 @@ local commands = {
   ["doc:move-lines-down"] = function()
     local line1, col1, line2, col2, swap = doc():get_selection(true)
     append_line_if_last_line(line2 + 1)
-    if line2 < #doc().lines then
-      local text = doc().lines[line2 + 1]
+    if line2 < doc():line_count() then
+      local text = doc():get_line(line2 + 1)
       doc():remove(line2 + 1, 1, line2 + 2, 1)
       doc():insert(line1, 1, text)
       doc():set_selection(line1 + 1, col1, line2 + 1, col2, swap)
@@ -229,7 +229,7 @@ local commands = {
     local line1, _, line2 = doc():get_selection(true)
     local uncomment = true
     for line = line1, line2 do
-      local text = doc().lines[line]
+      local text = doc():get_line(line)
       if text:find("%S") and text:find(comment_text, 1, true) ~= 1 then
         uncomment = false
       end
@@ -257,7 +257,7 @@ local commands = {
       if items then return end
       items = {}
       local mt = { __tostring = function(x) return x.text end }
-      for i, line in ipairs(dv.doc.lines) do
+      for i, line in dv.doc:each_line() do
         local item = { text = line:sub(1, -2), line = i, info = "line: " .. i }
         table.insert(items, setmetatable(item, mt))
       end
@@ -281,12 +281,13 @@ local commands = {
   end,
 
   ["doc:toggle-line-ending"] = function()
-    doc().crlf = not doc().crlf
+    doc():set_crlf(not doc():is_crlf())
   end,
 
   ["doc:save-as"] = function()
-    if doc().filename then
-      core.command_view:set_text(doc().filename)
+    local filename = doc():get_filename()
+    if filename then
+      core.command_view:set_text(filename)
     end
     core.command_view:enter("Save As", function(filename)
       save(filename)
@@ -294,7 +295,7 @@ local commands = {
   end,
 
   ["doc:save"] = function()
-    if doc().filename then
+    if doc():get_filename() then
       save()
     else
       command.perform("doc:save-as")
@@ -302,7 +303,7 @@ local commands = {
   end,
 
   ["doc:rename"] = function()
-    local old_filename = doc().filename
+    local old_filename = doc():get_filename()
     if not old_filename then
       core.error("Cannot rename unsaved doc")
       return

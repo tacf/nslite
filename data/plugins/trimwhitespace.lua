@@ -5,7 +5,7 @@ local Doc = require "core.doc"
 
 local function trim_trailing_whitespace(doc)
   local cline, ccol = doc:get_selection()
-  for i = 1, #doc.lines do
+  for i = 1, doc:line_count() do
     local old_text = doc:get_text(i, 1, i, math.huge)
     local new_text = old_text:gsub("%s*$", "")
 

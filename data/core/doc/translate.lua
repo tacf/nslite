@@ -91,9 +91,9 @@ function translate.previous_block_start(doc, line, col)
     if line <= 1 then
       return 1, 1
     end
-    if doc.lines[line-1]:find("^%s*$")
-    and not doc.lines[line]:find("^%s*$") then
-      return line, (doc.lines[line]:find("%S"))
+    if doc:get_line(line - 1):find("^%s*$")
+    and not doc:get_line(line):find("^%s*$") then
+      return line, (doc:get_line(line):find("%S"))
     end
   end
 end
@@ -101,12 +101,12 @@ end
 
 function translate.next_block_end(doc, line, col)
   while true do
-    if line >= #doc.lines then
-      return #doc.lines, 1
+    if line >= doc:line_count() then
+      return doc:line_count(), 1
     end
-    if doc.lines[line+1]:find("^%s*$")
-    and not doc.lines[line]:find("^%s*$") then
-      return line+1, #doc.lines[line+1]
+    if doc:get_line(line + 1):find("^%s*$")
+    and not doc:get_line(line):find("^%s*$") then
+      return line + 1, #doc:get_line(line + 1)
     end
     line = line + 1
   end
@@ -129,7 +129,8 @@ end
 
 
 function translate.end_of_doc(doc, line, col)
-  return #doc.lines, #doc.lines[#doc.lines]
+  local line = doc:line_count()
+  return line, #doc:get_line(line)
 end
 
 

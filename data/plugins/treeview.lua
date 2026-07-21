@@ -144,7 +144,7 @@ function TreeView:draw()
   local spacing = style.font:get_width(" ") * 2
 
   local doc = core.active_view.doc
-  local active_filename = doc and system.absolute_path(doc.filename or "")
+  local active_filename = doc and system.absolute_path(doc:get_filename() or "")
 
   for item, ix,y,w,h in self:each_item() do
     local color = style.text

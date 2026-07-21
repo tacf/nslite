@@ -47,14 +47,14 @@ end
 
 function Highlighter:invalidate(idx)
   self.first_invalid_line = math.min(self.first_invalid_line, idx)
-  self.max_wanted_line = math.min(self.max_wanted_line, #self.doc.lines)
+  self.max_wanted_line = math.min(self.max_wanted_line, self.doc:line_count())
 end
 
 
 function Highlighter:tokenize_line(idx, state)
   local res = {}
   res.init_state = state
-  res.text = self.doc.lines[idx]
+  res.text = self.doc:get_line(idx)
   res.tokens, res.state = tokenizer.tokenize(self.doc.syntax, res.text, state)
   return res
 end
@@ -62,7 +62,7 @@ end
 
 function Highlighter:get_line(idx)
   local line = self.lines[idx]
-  if not line or line.text ~= self.doc.lines[idx] then
+  if not line or line.text ~= self.doc:get_line(idx) then
     local prev = self.lines[idx - 1]
     line = self:tokenize_line(idx, prev and prev.state)
     self.lines[idx] = line
