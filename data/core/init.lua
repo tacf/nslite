@@ -128,7 +128,7 @@ function core.init()
   local got_project_error = not core.load_project_module()
 
   for _, filename in ipairs(files) do
-    core.root_view:open_doc(core.open_doc(filename))
+    core.open_file(filename)
   end
 
   if got_plugin_error or got_user_error or got_project_error then
@@ -287,6 +287,23 @@ function core.open_doc(filename)
 end
 
 
+function core.open_file(filename)
+  filename = core.project_path(filename)
+  local extension = filename and filename:match("%.([^./\\]+)$")
+  extension = extension and extension:lower()
+  if extension == "ttf" or extension == "otf" then
+    local FontView = require "core.fontview"
+    local abs_filename = system.absolute_path(filename)
+    local view = FontView(abs_filename)
+    return core.root_view:open_view(view, function(existing)
+      return existing:is(FontView)
+        and system.absolute_path(existing.filename) == abs_filename
+    end)
+  end
+  return core.root_view:open_doc(core.open_doc(filename))
+end
+
+
 function core.get_views_referencing_doc(doc)
   local res = {}
   local views = core.root_view.root_node:get_children()
@@ -365,12 +382,9 @@ function core.on_event(type, ...)
     if info and info.type == "dir" then
       system.exec(string.format("%q %q", EXEFILE, filename))
     else
-      local ok, doc = core.try(core.open_doc, filename)
-      if ok then
-        local node = core.root_view.root_node:get_child_overlapping_point(mx, my)
-        node:set_active_view(node.active_view)
-        core.root_view:open_doc(doc)
-      end
+      local node = core.root_view.root_node:get_child_overlapping_point(mx, my)
+      node:set_active_view(node.active_view)
+      core.try(core.open_file, filename)
     end
   elseif type == "quit" then
     core.quit()

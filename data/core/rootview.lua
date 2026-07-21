@@ -416,23 +416,34 @@ function RootView:get_active_node()
 end
 
 
-function RootView:open_doc(doc)
+function RootView:open_view(view, is_same)
   local node = self:get_active_node()
   if node.locked and core.last_active_view then
     core.set_active_view(core.last_active_view)
     node = self:get_active_node()
   end
-  assert(not node.locked, "Cannot open doc on locked node")
-  for i, view in ipairs(node.views) do
-    if view.doc == doc then
-      node:set_active_view(node.views[i])
-      return view
+  assert(not node.locked, "Cannot open view on locked node")
+  if is_same then
+    for _, existing in ipairs(node.views) do
+      if is_same(existing) then
+        node:set_active_view(existing)
+        return existing, false
+      end
     end
   end
-  local view = DocView(doc)
   node:add_view(view)
   self.root_node:update_layout()
-  view:scroll_to_line(view.doc:get_selection(), true, true)
+  return view, true
+end
+
+
+function RootView:open_doc(doc)
+  local view, is_new = self:open_view(DocView(doc), function(existing)
+    return existing.doc == doc
+  end)
+  if is_new then
+    view:scroll_to_line(view.doc:get_selection(), true, true)
+  end
   return view
 end
 

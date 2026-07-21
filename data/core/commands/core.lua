@@ -57,7 +57,7 @@ command.add(nil, {
   ["core:find-file"] = function()
     core.command_view:enter("Open File From Project", function(text, item)
       text = item and item.text or text
-      core.root_view:open_doc(core.open_doc(text))
+      core.open_file(text)
     end, function(text)
       local files = {}
       for _, item in pairs(core.project_files) do
@@ -75,7 +75,7 @@ command.add(nil, {
 
   ["core:open-file"] = function()
     core.command_view:enter("Open File", function(text)
-      core.root_view:open_doc(core.open_doc(text))
+      core.open_file(text)
     end, common.path_suggest)
   end,
 

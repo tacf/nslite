@@ -12,6 +12,7 @@ Features:
 - Modern styled search in document
 - C-native document management (for increased performance -- improvements to come)
 - C-native PCRE2 tokenizer with document-owned token caching
+- Built-in TTF and OTF font previews
 
 ## `Document` API
 
@@ -27,6 +28,14 @@ The C `document` module compiles those definitions and tokenizes document lines
 directly, while owning multiline state, token caches, and edit invalidation.
 Lua only selects and configures the syntax and iterates over the resulting
 tokens for rendering.
+
+## Font preview
+
+Opening a TTF or OTF font displays a scrollable text samples at several sizes.
+The shown glyphs are based on hardcoded strings defined in the plugin lua code,
+so they may not match exactly what you'd expect to see (you can check the icons
+font file used by this editor that is present in the main data/ folder as an
+example of this).
 
 ## License
 
