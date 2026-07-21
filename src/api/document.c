@@ -4,15 +4,17 @@
 #include <stdint.h>
 #include <string.h>
 #include "api.h"
+#include "syntax.h"
 
 
 /* Documents always contain at least one line. Every live line includes its
  * trailing '\n' and is NULL-terminated; byte_count excludes only that NULL.
- * Lines and columns are one-based (cause lua, maybe we can change this later on), 
- * and range end positions are exclusive. */
+ * Lines and columns use Lua-facing one-based indexing, and range end positions
+ * are exclusive. */
 typedef struct {
   char *data;
   size_t byte_count;
+  DocumentTokenLine token_line;
 } DocumentLine;
 
 
@@ -23,6 +25,8 @@ typedef struct {
   char *filename;
   uint64_t revision;
   bool crlf;
+  DocumentSyntax *syntax;
+  size_t first_invalid_line;
 } Document;
 
 
@@ -37,10 +41,11 @@ static Document *check_document(lua_State *L, int index) {
 }
 
 
-// Document storage operations
+/* Document storage operations */
 
 static void line_destroy(DocumentLine *line) {
   SDL_free(line->data);
+  document_token_line_destroy(&line->token_line);
   *line = (DocumentLine) { 0 };
 }
 
@@ -98,6 +103,7 @@ static bool document_append_line(
 
 static void document_replace(Document *document, Document *replacement) {
   replacement->revision = document->revision + 1;
+  replacement->syntax = document->syntax;
   document_destroy(document);
   *document = *replacement;
   *replacement = (Document) { 0 };
@@ -112,7 +118,39 @@ static bool document_reset(Document *document) {
 }
 
 
-// File IO Operations
+static void document_invalidate_tokens(Document *document, size_t line) {
+  for (size_t i = line; i < document->line_count; i++) {
+    document_token_line_destroy(&document->lines[i].token_line);
+  }
+  if (line < document->first_invalid_line) {
+    document->first_invalid_line = line;
+  }
+}
+
+
+static bool document_tokenize_to(
+  Document *document, size_t line, int *error_code
+) {
+  while (document->first_invalid_line <= line) {
+    size_t index = document->first_invalid_line;
+    DocumentLine *current = &document->lines[index];
+    size_t start_state = index ? document->lines[index - 1].token_line.end_state : 0;
+    if (!document_syntax_tokenize_line(
+          document->syntax,
+          current->data,
+          current->byte_count,
+          start_state,
+          &current->token_line,
+          error_code)) {
+      return false;
+    }
+    document->first_invalid_line++;
+  }
+  return true;
+}
+
+
+/* File I/O operations */
 
 static bool document_append_file_line(
   Document *document, const char *data, size_t byte_count
@@ -213,7 +251,7 @@ static bool document_save(Document *document, const char *filename, bool crlf) {
 }
 
 
-// Editing and text references operations
+/* Editing and text access */
 
 static size_t lua_check_clamped_index(
   lua_State *L, int index, size_t maximum
@@ -290,7 +328,8 @@ static bool document_insert(
   DocumentLine *new_lines = SDL_calloc(new_line_count, sizeof(*new_lines));
   if (!new_lines) { return false; }
 
-  DocumentLine *original = &document->lines[at.line - 1];
+  size_t index = at.line - 1;
+  DocumentLine *original = &document->lines[index];
   size_t prefix_length = at.column - 1;
   const char *suffix = original->data + prefix_length;
   size_t suffix_length = original->byte_count - prefix_length;
@@ -326,9 +365,8 @@ static bool document_insert(
     return false;
   }
 
-  size_t index = at.line - 1;
   size_t tail_count = document->line_count - index - 1;
-  line_destroy(original);
+  line_destroy(&document->lines[index]);
   SDL_memmove(
     document->lines + index + new_line_count,
     document->lines + index + 1,
@@ -340,6 +378,7 @@ static bool document_insert(
   SDL_free(new_lines);
   document->line_count = resulting_line_count;
   document->revision++;
+  document_invalidate_tokens(document, index);
 
   end_position->line = at.line + new_line_count - 1;
   if (new_line_count == 1) {
@@ -384,6 +423,7 @@ static bool document_remove(
     tail_count * sizeof(*document->lines));
   document->line_count -= removed_count - 1;
   document->revision++;
+  document_invalidate_tokens(document, first_index);
   return true;
 }
 
@@ -432,7 +472,7 @@ static DocumentPosition document_position_offset(
 }
 
 
-// Bidings definition
+/* Lua bindings */
 
 static int lua_push_position(lua_State *L, DocumentPosition position) {
   lua_pushinteger(L, (lua_Integer) position.line);
@@ -456,12 +496,74 @@ static int lua_push_sdl_result(
 
 
 static int f_new(lua_State *L) {
-  Document *document = lua_newuserdatauv(L, sizeof(*document), 0);
+  Document *document = lua_newuserdatauv(L, sizeof(*document), 1);
   *document = (Document) { 0 };
   if (!document_reset(document)) {
     return luaL_error(L, "out of memory while creating document");
   }
   luaL_setmetatable(L, API_TYPE_DOCUMENT);
+  return 1;
+}
+
+
+static int f_set_syntax(lua_State *L) {
+  Document *document = check_document(L, 1);
+  DocumentSyntax *syntax = document_syntax_check(L, 2);
+  if (document->syntax == syntax) { return 0; }
+
+  document_invalidate_tokens(document, 0);
+  document->syntax = syntax;
+  lua_pushvalue(L, 2);
+  lua_setiuservalue(L, 1, 1);
+  return 0;
+}
+
+
+static int f_token_iterator(lua_State *L) {
+  Document *document = check_document(L, lua_upvalueindex(1));
+  size_t line = (size_t) lua_tointeger(L, lua_upvalueindex(2));
+  size_t index = (size_t) lua_tointeger(L, lua_upvalueindex(3));
+  const DocumentTokenLine *token_line = &document->lines[line].token_line;
+  if (index >= token_line->token_count) { return 0; }
+
+  const DocumentToken *token = &token_line->tokens[index];
+  lua_pushinteger(L, (lua_Integer) index + 1);
+  lua_pushstring(L, token->type);
+  lua_pushlstring(
+    L, document->lines[line].data + token->offset, token->length);
+  lua_pushinteger(L, (lua_Integer) index + 1);
+  lua_replace(L, lua_upvalueindex(3));
+  return 3;
+}
+
+
+static int f_each_token(lua_State *L) {
+  Document *document = check_document(L, 1);
+  lua_Integer requested_line = luaL_checkinteger(L, 2);
+  if (requested_line < 1 || (uint64_t) requested_line > document->line_count) {
+    return luaL_argerror(L, 2, "line out of bounds");
+  }
+  if (!document->syntax) {
+    return luaL_error(L, "document syntax has not been set");
+  }
+
+  int error_code = 0;
+  size_t line = (size_t) requested_line - 1;
+  if (!document_tokenize_to(document, line, &error_code)) {
+    if (error_code) {
+      char message[256];
+      return luaL_error(
+        L,
+        "tokenizer match failed: %s",
+        document_syntax_error_message(error_code, message, sizeof(message)));
+    }
+    return luaL_error(L, "out of memory while tokenizing document");
+  }
+
+  lua_pushvalue(L, 1);
+  lua_pushinteger(L, (lua_Integer) line);
+  lua_pushinteger(L, 0);
+  lua_pushcclosure(L, f_token_iterator, 3);
   return 1;
 }
 
@@ -648,17 +750,21 @@ static const luaL_Reg document_lib[] = {
   { "filename",          f_filename          },
   { "is_crlf",           f_is_crlf           },
   { "set_crlf",          f_set_crlf          },
+  { "set_syntax",        f_set_syntax        },
+  { "each_token",        f_each_token        },
   { NULL, NULL }
 };
 
 
 static const luaL_Reg module_lib[] = {
-  { "new", f_new },
+  { "new",            f_new                    },
+  { "compile_syntax", document_syntax_compile  },
   { NULL, NULL }
 };
 
 
 int luaopen_document(lua_State *L) {
+  document_syntax_register(L);
   luaL_newmetatable(L, API_TYPE_DOCUMENT);
   luaL_setfuncs(L, document_lib, 0);
   lua_pushvalue(L, -1);

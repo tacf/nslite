@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.20)
 project(nsl C)
 
+if(POLICY CMP0135)
+    cmake_policy(SET CMP0135 NEW)
+endif()
+
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
@@ -27,16 +31,31 @@ set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(SDL3)
 
+set(BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
+set(PCRE2_BUILD_PCRE2_8 ON CACHE BOOL "" FORCE)
+set(PCRE2_BUILD_PCRE2_16 OFF CACHE BOOL "" FORCE)
+set(PCRE2_BUILD_PCRE2_32 OFF CACHE BOOL "" FORCE)
+set(PCRE2_BUILD_PCRE2GREP OFF CACHE BOOL "" FORCE)
+set(PCRE2_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(PCRE2_SUPPORT_JIT OFF CACHE BOOL "" FORCE)
+set(PCRE2_SHOW_REPORT OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+    PCRE2
+    GIT_REPOSITORY https://github.com/PCRE2Project/pcre2.git
+    GIT_TAG        pcre2-10.47
+    GIT_SHALLOW    TRUE
+)
+
+FetchContent_MakeAvailable(PCRE2)
+
 FetchContent_Declare(
     lua
     URL            https://www.lua.org/ftp/lua-5.5.0.tar.gz
     URL_HASH       SHA256=57ccc32bbbd005cab75bcc52444052535af691789dba2b9016d5c50640d68b3d
 )
 
-FetchContent_GetProperties(lua)
-if(NOT lua_POPULATED)
-    FetchContent_Populate(lua)
-endif()
+FetchContent_MakeAvailable(lua)
 
 file(GLOB LUA_SOURCES ${lua_SOURCE_DIR}/src/*.c)
 list(FILTER LUA_SOURCES EXCLUDE REGEX "lua\\.c$")
@@ -64,6 +83,7 @@ set(NSLITE_SOURCES
     src/api/renderer_font.c
     src/api/system.c
     src/api/document.c
+    src/api/syntax.c
 )
 
 add_executable(nsl ${NSLITE_SOURCES})
@@ -71,7 +91,7 @@ nslite_enable_strict_warnings(nsl)
 
 target_include_directories(nsl PRIVATE src)
 
-target_link_libraries(nsl PRIVATE SDL3::SDL3 lua nsl_stb)
+target_link_libraries(nsl PRIVATE SDL3::SDL3 lua nsl_stb pcre2-8-static)
 
 if(UNIX)
     target_link_libraries(nsl PRIVATE m)

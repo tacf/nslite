@@ -1,5 +1,4 @@
 local Object = require "core.object"
-local Highlighter = require "core.doc.highlighter"
 local syntax = require "core.syntax"
 local config = require "core.config"
 
@@ -25,7 +24,6 @@ function Doc:reset()
   self.undo_stack = { idx = 1 }
   self.redo_stack = { idx = 1 }
   self.clean_change_id = 1
-  self.highlighter = Highlighter(self)
   self:reset_syntax()
 end
 
@@ -35,7 +33,7 @@ function Doc:reset_syntax()
   local syn = syntax.get(self:get_filename() or "", header)
   if self.syntax ~= syn then
     self.syntax = syn
-    self.highlighter:reset()
+    self._document:set_syntax(syn.native)
   end
 end
 
@@ -48,7 +46,6 @@ function Doc:load(filename)
   self.undo_stack = { idx = 1 }
   self.redo_stack = { idx = 1 }
   self.clean_change_id = 1
-  self.highlighter = Highlighter(self)
   self:reset_syntax()
 end
 
@@ -241,8 +238,7 @@ function Doc:raw_insert(line, col, text, undo_stack, time)
   push_undo(undo_stack, time, "selection", self:get_selection())
   push_undo(undo_stack, time, "remove", line, col, line2, col2)
 
-  -- update highlighter and assure selection is in bounds
-  self.highlighter:invalidate(line)
+  -- assure selection is in bounds
   self:sanitize_selection()
 end
 
@@ -255,8 +251,7 @@ function Doc:raw_remove(line1, col1, line2, col2, undo_stack, time)
 
   self._document:remove(line1, col1, line2, col2)
 
-  -- update highlighter and assure selection is in bounds
-  self.highlighter:invalidate(line1)
+  -- assure selection is in bounds
   self:sanitize_selection()
 end
 

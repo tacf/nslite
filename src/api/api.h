@@ -7,6 +7,7 @@
 
 #define API_TYPE_FONT "Font"
 #define API_TYPE_DOCUMENT "Document"
+#define API_TYPE_DOCUMENT_SYNTAX "DocumentSyntax"
 
 void api_load_libs(lua_State *L);
 

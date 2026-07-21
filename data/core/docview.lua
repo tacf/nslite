@@ -296,7 +296,7 @@ end
 function DocView:draw_line_text(idx, x, y)
   local tx, ty = x, y + self:get_line_text_y_offset()
   local font = self:get_font()
-  for _, type, text in self.doc.highlighter:each_token(idx) do
+  for _, type, text in self.doc._document:each_token(idx) do
     local color = style.syntax[type]
     tx = renderer.draw_text(font, text, tx, ty, color)
   end
