@@ -15,7 +15,8 @@
 enum { FREE_FONT, SET_CLIP, DRAW_TEXT, DRAW_RECT };
 
 typedef struct {
-  int type, size;
+  int type;
+  size_t size;
   RenRect rect;
   RenColor color;
   RenFont *font;
@@ -30,7 +31,7 @@ static unsigned *cells_prev = cells_buf1;
 static unsigned *cells = cells_buf2;
 static RenRect rect_buf[CELLS_X * CELLS_Y / 2];
 static char command_buf[COMMAND_BUF_SIZE];
-static int command_buf_idx;
+static size_t command_buf_idx;
 static RenRect screen_rect;
 static bool show_debug;
 
@@ -41,10 +42,11 @@ static inline int rc_max(int a, int b) { return a > b ? a : b; }
 /* 32bit fnv-1a hash */
 #define HASH_INITIAL 2166136261
 
-static void hash(unsigned *h, const void *data, int size) {
+static void hash(unsigned *h, const void *data, size_t size) {
   const unsigned char *p = data;
-  while (size--) {
+  while (size > 0) {
     *h = (*h ^ *p++) * 16777619;
+    size--;
   }
 }
 
@@ -78,14 +80,14 @@ static RenRect merge_rects(RenRect a, RenRect b) {
 }
 
 
-static Command* push_command(int type, int size) {
+static Command* push_command(int type, size_t size) {
   Command *cmd = (Command*) (command_buf + command_buf_idx);
-  int n = command_buf_idx + size;
-  if (n > COMMAND_BUF_SIZE) {
+  if (size > COMMAND_BUF_SIZE - command_buf_idx) {
     fprintf(stderr, "Warning: (" __FILE__ "): exhausted command buffer\n");
     return NULL;
   }
-  command_buf_idx = n;
+  size_t next_index = command_buf_idx + size;
+  command_buf_idx = next_index;
   memset(cmd, 0, sizeof(Command));
   cmd->type = type;
   cmd->size = size;
@@ -138,10 +140,10 @@ int rencache_draw_text(RenFont *font, const char *text, int x, int y, RenColor c
   rect.height = ren_get_font_height(font);
 
   if (rects_overlap(screen_rect, rect)) {
-    int sz = strlen(text) + 1;
-    Command *cmd = push_command(DRAW_TEXT, sizeof(Command) + sz);
+    size_t size = strlen(text) + 1;
+    Command *cmd = push_command(DRAW_TEXT, sizeof(Command) + size);
     if (cmd) {
-      memcpy(cmd->text, text, sz);
+      memcpy(cmd->text, text, size);
       cmd->color = color;
       cmd->font = font;
       cmd->rect = rect;
@@ -264,7 +266,9 @@ void rencache_end_frame(void) {
     }
 
     if (show_debug) {
-      RenColor color = { rand(), rand(), rand(), 50 };
+      RenColor color = {
+        (uint8_t) rand(), (uint8_t) rand(), (uint8_t) rand(), 50
+      };
       ren_draw_rect(r, color);
     }
   }

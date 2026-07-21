@@ -1,5 +1,6 @@
 #include <SDL3/SDL.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -9,9 +10,9 @@
 extern SDL_Window *window;
 
 
-static float get_scale(void) {
-  float s = SDL_GetWindowDisplayScale(window);
-  return s > 0 ? s : 1.0f;
+static double get_scale(void) {
+  double scale = SDL_GetWindowDisplayScale(window);
+  return scale > 0.0 ? scale : 1.0;
 }
 
 
@@ -25,21 +26,23 @@ static const char* button_name(int button) {
 }
 
 
-static char* key_name(char *dst, SDL_Keycode sym) {
-  strcpy(dst, SDL_GetKeyName(sym));
-  char *p = dst;
+static char* key_name(
+  char *destination, size_t destination_size, SDL_Keycode symbol
+) {
+  SDL_strlcpy(destination, SDL_GetKeyName(symbol), destination_size);
+  char *p = destination;
   while (*p) {
-    *p = tolower(*p);
+    *p = (char) tolower((unsigned char) *p);
     p++;
   }
-  return dst;
+  return destination;
 }
 
 
 static int f_poll_event(lua_State *L) {
   char buf[16];
   SDL_Event e;
-  float scale = get_scale();
+  double scale = get_scale();
 
 top:
   if ( !SDL_PollEvent(&e) ) {
@@ -76,12 +79,12 @@ top:
 
     case SDL_EVENT_KEY_DOWN:
       lua_pushstring(L, "keypressed");
-      lua_pushstring(L, key_name(buf, e.key.key));
+      lua_pushstring(L, key_name(buf, sizeof(buf), e.key.key));
       return 2;
 
     case SDL_EVENT_KEY_UP:
       lua_pushstring(L, "keyreleased");
-      lua_pushstring(L, key_name(buf, e.key.key));
+      lua_pushstring(L, key_name(buf, sizeof(buf), e.key.key));
       return 2;
 
     case SDL_EVENT_TEXT_INPUT:
@@ -128,8 +131,16 @@ top:
 
 
 static int f_wait_event(lua_State *L) {
-  double n = luaL_checknumber(L, 1);
-  lua_pushboolean(L, SDL_WaitEventTimeout(NULL, n * 1000));
+  double milliseconds = luaL_checknumber(L, 1) * 1000.0;
+  Sint32 timeout = 0;
+  if (milliseconds < 0.0) {
+    timeout = -1;
+  } else if (milliseconds >= INT32_MAX) {
+    timeout = INT32_MAX;
+  } else if (milliseconds >= 0.0) {
+    timeout = (Sint32) milliseconds;
+  }
+  lua_pushboolean(L, SDL_WaitEventTimeout(NULL, timeout));
   return 1;
 }
 
@@ -321,15 +332,21 @@ static int f_set_clipboard(lua_State *L) {
 
 
 static int f_get_time(lua_State *L) {
-  double n = SDL_GetPerformanceCounter() / (double) SDL_GetPerformanceFrequency();
+  double n = (double) SDL_GetPerformanceCounter()
+    / (double) SDL_GetPerformanceFrequency();
   lua_pushnumber(L, n);
   return 1;
 }
 
 
 static int f_sleep(lua_State *L) {
-  double n = luaL_checknumber(L, 1);
-  SDL_Delay(n * 1000);
+  double milliseconds = luaL_checknumber(L, 1) * 1000.0;
+  if (milliseconds > 0.0) {
+    Uint32 delay = milliseconds > UINT32_MAX
+      ? UINT32_MAX
+      : (Uint32) milliseconds;
+    SDL_Delay(delay);
+  }
   return 0;
 }
 

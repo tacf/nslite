@@ -15,7 +15,8 @@ static double get_scale(void) {
 }
 
 
-static void get_exe_filename(const char *argv0, char *buf, int sz) {
+
+static void get_exe_filename(const char *argv0, char *buf, size_t size) {
   const char *basename = strrchr(argv0, '/');
   const char *windows_basename = strrchr(argv0, '\\');
   if (!basename || (windows_basename && windows_basename > basename)) {
@@ -24,10 +25,12 @@ static void get_exe_filename(const char *argv0, char *buf, int sz) {
   basename = basename ? basename + 1 : argv0;
 
   const char *basepath = SDL_GetBasePath();
-  if (basepath && snprintf(buf, sz, "%s%s", basepath, basename) < sz) { return; }
+  int written = basepath
+    ? SDL_snprintf(buf, size, "%s%s", basepath, basename)
+    : -1;
+  if (written >= 0 && (size_t) written < size) { return; }
 
-  strncpy(buf, argv0, sz - 1);
-  buf[sz - 1] = '\0';
+  SDL_strlcpy(buf, argv0, size);
 }
 
 
@@ -56,7 +59,7 @@ int main(int argc, char **argv) {
   int dh = dm ? dm->h : 720;
 
   window = SDL_CreateWindow(
-    "", dw * 0.8, dh * 0.8,
+    "", dw * 4 / 5, dh * 4 / 5,
     SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY);
   if (!window) {
     fprintf(stderr, "Failed to create window: %s\n", SDL_GetError());

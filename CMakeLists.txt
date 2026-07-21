@@ -53,6 +53,7 @@ elseif(WIN32)
 endif()
 
 file(GLOB_RECURSE STB_SOURCES CONFIGURE_DEPENDS src/lib/stb/*.c)
+add_library(nsl_stb STATIC ${STB_SOURCES})
 
 set(NSLITE_SOURCES
     src/main.c
@@ -65,12 +66,12 @@ set(NSLITE_SOURCES
     src/api/document.c
 )
 
-add_executable(nsl ${NSLITE_SOURCES} ${STB_SOURCES})
+add_executable(nsl ${NSLITE_SOURCES})
 nslite_enable_strict_warnings(nsl)
 
 target_include_directories(nsl PRIVATE src)
 
-target_link_libraries(nsl PRIVATE SDL3::SDL3 lua)
+target_link_libraries(nsl PRIVATE SDL3::SDL3 lua nsl_stb)
 
 if(UNIX)
     target_link_libraries(nsl PRIVATE m)

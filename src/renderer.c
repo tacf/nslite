@@ -172,27 +172,24 @@ static GlyphSet* get_glyphset(RenFont *font, int codepoint) {
 
 
 RenFont* ren_load_font(const char *filename, float size) {
-  RenFont *font = NULL;
-  FILE *fp = NULL;
-
   /* init font */
-  font = check_alloc(calloc(1, sizeof(RenFont)));
+  RenFont *font = check_alloc(calloc(1, sizeof(RenFont)));
   font->size = size;
 
   /* load font into buffer */
-  fp = fopen(filename, "rb");
-  if (!fp) { return NULL; }
-  /* get size */
-  fseek(fp, 0, SEEK_END); int buf_size = ftell(fp); fseek(fp, 0, SEEK_SET);
-  /* load */
-  font->data = check_alloc(malloc(buf_size));
-  int _ = fread(font->data, 1, buf_size, fp); (void) _;
-  fclose(fp);
-  fp = NULL;
+  font->data = SDL_LoadFile(filename, NULL);
+  if (!font->data) {
+    free(font);
+    return NULL;
+  }
 
   /* init stbfont */
   int ok = stbtt_InitFont(&font->stbfont, font->data, 0);
-  if (!ok) { goto fail; }
+  if (!ok) {
+    SDL_free(font->data);
+    free(font);
+    return NULL;
+  }
 
   /* get height and scale */
   int ascent, descent, linegap;
@@ -206,12 +203,6 @@ RenFont* ren_load_font(const char *filename, float size) {
   g['\n'].x1 = g['\n'].x0;
 
   return font;
-
-fail:
-  if (fp) { fclose(fp); }
-  if (font) { free(font->data); }
-  free(font);
-  return NULL;
 }
 
 
@@ -223,7 +214,7 @@ void ren_free_font(RenFont *font) {
       free(set);
     }
   }
-  free(font->data);
+  SDL_free(font->data);
   free(font);
 }
 
