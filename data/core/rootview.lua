@@ -556,8 +556,9 @@ function RootView:open_view(view, is_same)
 end
 
 
-function RootView:open_doc(doc)
-  local view, is_new = self:open_view(DocView(doc), function(existing)
+function RootView:open_doc(doc, ViewType)
+  ViewType = ViewType or DocView
+  local view, is_new = self:open_view(ViewType(doc), function(existing)
     return existing.doc == doc
   end)
   if is_new then

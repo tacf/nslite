@@ -85,13 +85,13 @@ command.add(nil, {
   end,
 
   ["core:open-user-module"] = function()
-    core.root_view:open_doc(core.open_doc(USERDIR .. PATHSEP .. "init.lua"))
+    core.open_file(USERDIR .. PATHSEP .. "init.lua")
   end,
 
   ["core:open-project-module"] = function()
     local filename = core.project_path(".nslite_project.lua")
     if system.get_file_info(filename) then
-      core.root_view:open_doc(core.open_doc(filename))
+      core.open_file(filename)
     else
       local doc = core.open_doc()
       core.root_view:open_doc(doc)

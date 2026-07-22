@@ -289,18 +289,7 @@ end
 
 function core.open_file(filename)
   filename = core.project_path(filename)
-  local extension = filename and filename:match("%.([^./\\]+)$")
-  extension = extension and extension:lower()
-  if extension == "ttf" or extension == "otf" then
-    local FontView = require "core.fontview"
-    local abs_filename = system.absolute_path(filename)
-    local view = FontView(abs_filename)
-    return core.root_view:open_view(view, function(existing)
-      return existing:is(FontView)
-        and system.absolute_path(existing.filename) == abs_filename
-    end)
-  end
-  return core.root_view:open_doc(core.open_doc(filename))
+  return require("core.filepresentation").open(filename)
 end
 
 

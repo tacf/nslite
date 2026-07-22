@@ -41,7 +41,19 @@ The C `lsp` module owns server communication and document synchronization,
 while Lua selects and configures language servers. `clangd` is enabled for C
 and C++, and `gopls` for Go; both start lazily when needed.
 
-## Font preview
+## Presentations
+
+This is one drift from the original implementation. Alongside the move of most
+core logic into native C (like document handling). We're extending the DocView
+with a couple of so called `presentations`, which are basically just different
+views for different purposes.
+
+These "specialized" views live under `core.presentations` and on opening a file
+the `core.filepresentation` selects the proper view to use. Plugins can register
+additional filename patterns and open functions with `filepresentation.add`;
+registrations define the order of priority -- last registered being the top one.
+
+### Font View
 
 Opening a TTF or OTF font displays a scrollable text samples at several sizes.
 The shown glyphs are based on hardcoded strings defined in the plugin lua code,
@@ -75,7 +87,6 @@ make release  # release build
 make run      # debug build, then run the editor
 make clean    # remove the build directory
 ```
-
 
 ## License
 

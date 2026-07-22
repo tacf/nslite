@@ -89,9 +89,16 @@ function StatusView:draw_items(items, right_align, yoffset)
 end
 
 
+local function get_active_docview()
+  local view = core.active_view
+  -- We present status view only for subclasses of DocView
+  if view and view:is(DocView) and view.doc then return view end
+end
+
+
 function StatusView:get_items()
-  if getmetatable(core.active_view) == DocView then
-    local dv = core.active_view
+  local dv = get_active_docview()
+  if dv then
     local line, col = dv.doc:get_selection()
     local dirty = dv.doc:is_dirty()
 

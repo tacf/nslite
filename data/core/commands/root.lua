@@ -80,7 +80,7 @@ for _, dir in ipairs { "left", "right", "up", "down" } do
     local av = node.active_view
     node:split(dir)
     if av:is(DocView) then
-      core.root_view:open_doc(av.doc)
+      core.root_view:open_doc(av.doc, getmetatable(av))
     end
   end
 
