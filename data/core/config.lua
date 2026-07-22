@@ -31,6 +31,12 @@ config.lsp = {
         } },
       },
     },
+    {
+      command = { "gopls" },
+      languages = {
+        { id = "go", files = { "%.go$" } },
+      },
+    },
   },
 }
 

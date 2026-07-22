@@ -39,7 +39,7 @@ configured server for the active document type.
 
 The C `lsp` module owns server communication and document synchronization,
 while Lua selects and configures language servers. `clangd` is enabled for C
-and C++ by default and starts lazily when needed.
+and C++, and `gopls` for Go; both start lazily when needed.
 
 ## Font preview
 
