@@ -25,7 +25,7 @@ option(NSLITE_USE_SYSTEM_LIBS "Use SDL3, SDL3_image, PCRE2, and Lua from the sys
 if(NSLITE_USE_SYSTEM_LIBS)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
-    pkg_check_modules(SDL3_IMAGE REQUIRED IMPORTED_TARGET SDL3_image)
+    pkg_check_modules(SDL3_IMAGE REQUIRED IMPORTED_TARGET sdl3-image)
     pkg_check_modules(PCRE2 REQUIRED IMPORTED_TARGET libpcre2-8)
     pkg_check_modules(LUA REQUIRED IMPORTED_TARGET lua>=5.5)
     set(NSLITE_SDL_TARGET PkgConfig::SDL3)
