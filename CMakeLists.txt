@@ -16,59 +16,75 @@ function(nslite_enable_strict_warnings target)
     endif()
 endfunction()
 
-include(FetchContent)
+option(NSLITE_USE_SYSTEM_LIBS "Use SDL3, PCRE2, and Lua from the system" OFF)
 
-FetchContent_Declare(
-    SDL3
-    GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-    GIT_TAG        main
-    GIT_SHALLOW    TRUE
-)
-
-set(SDL_SHARED ON CACHE BOOL "" FORCE)
-set(SDL_STATIC OFF CACHE BOOL "" FORCE)
-set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
-
-FetchContent_MakeAvailable(SDL3)
-
-set(BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
-set(PCRE2_BUILD_PCRE2_8 ON CACHE BOOL "" FORCE)
-set(PCRE2_BUILD_PCRE2_16 OFF CACHE BOOL "" FORCE)
-set(PCRE2_BUILD_PCRE2_32 OFF CACHE BOOL "" FORCE)
-set(PCRE2_BUILD_PCRE2GREP OFF CACHE BOOL "" FORCE)
-set(PCRE2_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(PCRE2_SUPPORT_JIT OFF CACHE BOOL "" FORCE)
-set(PCRE2_SHOW_REPORT OFF CACHE BOOL "" FORCE)
-
-FetchContent_Declare(
-    PCRE2
-    GIT_REPOSITORY https://github.com/PCRE2Project/pcre2.git
-    GIT_TAG        pcre2-10.47
-    GIT_SHALLOW    TRUE
-)
-
-FetchContent_MakeAvailable(PCRE2)
-
-FetchContent_Declare(
-    lua
-    URL            https://www.lua.org/ftp/lua-5.5.0.tar.gz
-    URL_HASH       SHA256=57ccc32bbbd005cab75bcc52444052535af691789dba2b9016d5c50640d68b3d
-)
-
-FetchContent_MakeAvailable(lua)
-
-file(GLOB LUA_SOURCES ${lua_SOURCE_DIR}/src/*.c)
-list(FILTER LUA_SOURCES EXCLUDE REGEX "lua\\.c$")
-list(FILTER LUA_SOURCES EXCLUDE REGEX "luac\\.c$")
-
-add_library(lua STATIC ${LUA_SOURCES})
-target_include_directories(lua PUBLIC ${lua_SOURCE_DIR}/src)
-set_target_properties(lua PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-if(UNIX AND NOT APPLE)
-    target_compile_definitions(lua PRIVATE LUA_USE_POSIX)
-elseif(WIN32)
-    target_compile_definitions(lua PRIVATE LUA_USE_POPEN)
+if(NSLITE_USE_SYSTEM_LIBS)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
+    pkg_check_modules(PCRE2 REQUIRED IMPORTED_TARGET libpcre2-8)
+    pkg_check_modules(LUA REQUIRED IMPORTED_TARGET lua>=5.5)
+    set(NSLITE_SDL_TARGET PkgConfig::SDL3)
+    set(NSLITE_PCRE2_TARGET PkgConfig::PCRE2)
+    set(NSLITE_LUA_TARGET PkgConfig::LUA)
+else()
+    include(FetchContent)
+    
+    FetchContent_Declare(
+        SDL3
+        GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+        GIT_TAG        main
+        GIT_SHALLOW    TRUE
+    )
+    
+    set(SDL_SHARED ON CACHE BOOL "" FORCE)
+    set(SDL_STATIC OFF CACHE BOOL "" FORCE)
+    set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+    
+    FetchContent_MakeAvailable(SDL3)
+    
+    set(BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
+    set(PCRE2_BUILD_PCRE2_8 ON CACHE BOOL "" FORCE)
+    set(PCRE2_BUILD_PCRE2_16 OFF CACHE BOOL "" FORCE)
+    set(PCRE2_BUILD_PCRE2_32 OFF CACHE BOOL "" FORCE)
+    set(PCRE2_BUILD_PCRE2GREP OFF CACHE BOOL "" FORCE)
+    set(PCRE2_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(PCRE2_SUPPORT_JIT OFF CACHE BOOL "" FORCE)
+    set(PCRE2_SHOW_REPORT OFF CACHE BOOL "" FORCE)
+    
+    FetchContent_Declare(
+        PCRE2
+        GIT_REPOSITORY https://github.com/PCRE2Project/pcre2.git
+        GIT_TAG        pcre2-10.47
+        GIT_SHALLOW    TRUE
+    )
+    
+    FetchContent_MakeAvailable(PCRE2)
+    
+    FetchContent_Declare(
+        lua
+        URL            https://www.lua.org/ftp/lua-5.5.0.tar.gz
+        URL_HASH       SHA256=57ccc32bbbd005cab75bcc52444052535af691789dba2b9016d5c50640d68b3d
+    )
+    
+    FetchContent_MakeAvailable(lua)
+    
+    file(GLOB LUA_SOURCES ${lua_SOURCE_DIR}/src/*.c)
+    list(FILTER LUA_SOURCES EXCLUDE REGEX "lua\\.c$")
+    list(FILTER LUA_SOURCES EXCLUDE REGEX "luac\\.c$")
+    
+    add_library(lua STATIC ${LUA_SOURCES})
+    target_include_directories(lua PUBLIC ${lua_SOURCE_DIR}/src)
+    set_target_properties(lua PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    
+    if(UNIX AND NOT APPLE)
+        target_compile_definitions(lua PRIVATE LUA_USE_POSIX)
+    elseif(WIN32)
+        target_compile_definitions(lua PRIVATE LUA_USE_POPEN)
+    endif()
+    
+    set(NSLITE_SDL_TARGET SDL3::SDL3)
+    set(NSLITE_PCRE2_TARGET pcre2-8-static)
+    set(NSLITE_LUA_TARGET lua)
 endif()
 
 file(GLOB_RECURSE STB_SOURCES CONFIGURE_DEPENDS src/lib/stb/*.c)
@@ -99,7 +115,13 @@ nslite_enable_strict_warnings(nsl)
 
 target_include_directories(nsl PRIVATE src)
 
-target_link_libraries(nsl PRIVATE SDL3::SDL3 lua nsl_stb nsl_cjson pcre2-8-static)
+target_link_libraries(nsl PRIVATE
+    ${NSLITE_SDL_TARGET}
+    ${NSLITE_LUA_TARGET}
+    ${NSLITE_PCRE2_TARGET}
+    nsl_stb
+    nsl_cjson
+)
 
 if(UNIX)
     target_link_libraries(nsl PRIVATE m)
