@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <math.h>
 #include <string.h>
+#include <SDL3_image/SDL_image.h>
 #include "lib/stb/stb_truetype.h"
 #include "renderer.h"
 #include "utils/utf8.h"
@@ -100,7 +101,43 @@ RenImage *ren_new_image(int width, int height) {
 }
 
 
+RenImage *ren_load_image(const char *filename) {
+  SDL_Surface *loaded = IMG_Load(filename);
+  if (!loaded) { return NULL; }
+
+  SDL_Surface *surface = SDL_ConvertSurface(loaded, SDL_PIXELFORMAT_ARGB8888);
+  SDL_DestroySurface(loaded);
+  if (!surface) { return NULL; }
+
+  bool locked = false;
+  if (SDL_MUSTLOCK(surface)) {
+    if (!SDL_LockSurface(surface)) {
+      SDL_DestroySurface(surface);
+      return NULL;
+    }
+    locked = true;
+  }
+
+  RenImage *image = ren_new_image(surface->w, surface->h);
+  for (int y = 0; y < surface->h; y++) {
+    memcpy(image->pixels + (size_t) y * (size_t) surface->w,
+      (uint8_t *) surface->pixels + (size_t) y * (size_t) surface->pitch,
+      (size_t) surface->w * sizeof(RenColor));
+  }
+
+  if (locked) { SDL_UnlockSurface(surface); }
+  SDL_DestroySurface(surface);
+  return image;
+}
+
+
 void ren_free_image(RenImage *image) { free(image); }
+
+
+int ren_get_image_width(RenImage *image) { return image->width; }
+
+
+int ren_get_image_height(RenImage *image) { return image->height; }
 
 
 static GlyphSet *load_glyphset(RenFont *font, int idx) {
@@ -323,6 +360,37 @@ void ren_draw_image(
     }
     d += dr;
     s += sr;
+  }
+}
+
+
+void ren_draw_image_scaled(RenImage *image, RenRect rect) {
+  if (rect.width <= 0 || rect.height <= 0) { return; }
+
+  int x1 = rect.x < clip.left ? clip.left : rect.x;
+  int y1 = rect.y < clip.top ? clip.top : rect.y;
+  int x2 = rect.x + rect.width;
+  int y2 = rect.y + rect.height;
+  x2 = x2 > clip.right ? clip.right : x2;
+  y2 = y2 > clip.bottom ? clip.bottom : y2;
+  if (x1 >= x2 || y1 >= y2) { return; }
+
+  SDL_Surface *surface = SDL_GetWindowSurface(window);
+  RenColor *destination = (RenColor *) surface->pixels;
+  destination += x1 + y1 * surface->w;
+  int destination_skip = surface->w - (x2 - x1);
+
+  for (int y = y1; y < y2; y++) {
+    int source_y = (int) (((int64_t) (y - rect.y) * image->height)
+      / rect.height);
+    for (int x = x1; x < x2; x++) {
+      int source_x = (int) (((int64_t) (x - rect.x) * image->width)
+        / rect.width);
+      RenColor source = image->pixels[source_x + source_y * image->width];
+      *destination = blend_pixel(*destination, source);
+      destination++;
+    }
+    destination += destination_skip;
   }
 }
 

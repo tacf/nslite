@@ -44,6 +44,24 @@ function filepresentation.open_document(filename, ViewType)
 end
 
 filepresentation.add {
+  name = "image",
+  files = {
+    "%.png$", "%.jpe?g$", "%.jfif$", "%.bmp$", "%.gif$", "%.webp$",
+    "%.svg$", "%.tga$", "%.qoi$", "%.ico$", "%.pnm$", "%.ppm$",
+    "%.pgm$", "%.pbm$",
+  },
+  open = function(filename)
+    local ImageView = require "core.presentations.image"
+    local absolute_filename = system.absolute_path(filename)
+    local view = ImageView(absolute_filename)
+    return core.root_view:open_view(view, function(existing)
+      return existing:is(ImageView)
+          and system.absolute_path(existing.filename) == absolute_filename
+    end)
+  end,
+}
+
+filepresentation.add {
   name = "font",
   files = { "%.ttf$", "%.otf$" },
   open = function(filename)

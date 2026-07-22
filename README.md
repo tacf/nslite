@@ -3,7 +3,7 @@
 Text editor based on [rxi/lite](https://github.com/rxi/lite).
 
 - The editor is mainly a rendering engine built in C and constructed through the supplied Lua API.
-- SDL3 is used as the rendering library.
+- SDL3 is used as the main rendering library (including SDL3 Image).
 - Lua 5.5 is the base Lua version.
 
 Features:
@@ -14,6 +14,7 @@ Features:
 - C-native PCRE2 tokenizer with document-owned token caching
 - Native LSP integration (basic functionality only - 'click to go to')
 - Built-in TTF and OTF font previews
+- Built-in image previews with zooming and panning
 
 ## `Document` API
 
@@ -60,6 +61,13 @@ The shown glyphs are based on hardcoded strings defined in the plugin lua code,
 so they may not match exactly what you'd expect to see (you can check the icons
 font file used by this editor that is present in the main data/ folder as an
 example of this).
+
+
+### Image View
+
+Editor allows the opening and view of most common types of image formats. This
+is achieved by the use of the SDL3 Image library and with it the Lua api gets 
+image rendering capabilities.
 
 ## Development
 

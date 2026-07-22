@@ -5,6 +5,7 @@ local config = require "core.config"
 local style = require "core.style"
 local DocView = require "core.docview"
 local LogView = require "core.logview"
+local ImageView = require "core.presentations.image"
 local View = require "core.view"
 
 
@@ -96,6 +97,19 @@ local function get_active_docview()
 end
 
 
+local function format_file_size(bytes)
+  local units = { "B", "KiB", "MiB", "GiB" }
+  local unit = 1
+  while bytes >= 1024 and unit < #units do
+    bytes = bytes / 1024
+    unit = unit + 1
+  end
+  if unit == 1 then return string.format("%d %s", bytes, units[unit]) end
+  return string.format(bytes < 10 and "%.1f %s" or "%.0f %s",
+    bytes, units[unit])
+end
+
+
 function StatusView:get_items()
   local dv = get_active_docview()
   if dv then
@@ -120,6 +134,21 @@ function StatusView:get_items()
       dv.doc:line_count(), " lines",
       self.separator,
       dv.doc:is_crlf() and "CRLF" or "LF"
+    }
+  end
+
+  local view = core.active_view
+  if view and view:is(ImageView) then
+    return {
+      style.icon_font, "f",
+      style.dim, style.font, self.separator2,
+      style.text, view:get_name(),
+      style.dim, self.separator, view.image_type,
+    }, {
+      style.text,
+      string.format("%d × %d px", view.image_width, view.image_height),
+      style.dim, self.separator,
+      format_file_size(view.file_size),
     }
   end
 

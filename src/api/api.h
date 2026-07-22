@@ -6,6 +6,7 @@
 #include "lualib.h"
 
 #define API_TYPE_FONT "Font"
+#define API_TYPE_IMAGE "Image"
 #define API_TYPE_DOCUMENT "Document"
 #define API_TYPE_DOCUMENT_SYNTAX "DocumentSyntax"
 #define API_TYPE_LSP_CLIENT "LspClient"
