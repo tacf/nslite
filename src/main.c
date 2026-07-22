@@ -5,6 +5,9 @@
 #include "api/api.h"
 #include "renderer.h"
 #include "utils/window.h"
+#ifdef __APPLE__
+#include "utils/macos.h"
+#endif
 
 
 SDL_Window *window;
@@ -55,6 +58,9 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Failed to create window: %s\n", SDL_GetError());
     return EXIT_FAILURE;
   }
+#ifdef __APPLE__
+  macos_disable_native_close_shortcut();
+#endif
   SDL_StartTextInput(window);
   init_window_icon();
   ren_init(window);

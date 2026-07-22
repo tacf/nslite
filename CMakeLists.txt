@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.20)
 project(nsl C)
 
+if(APPLE)
+    enable_language(OBJC)
+endif()
+
 if(POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW)
 endif()
@@ -110,6 +114,10 @@ set(NSLITE_SOURCES
     src/api/lsp.c
 )
 
+if(APPLE)
+    list(APPEND NSLITE_SOURCES src/utils/macos.m)
+endif()
+
 add_executable(nsl ${NSLITE_SOURCES})
 nslite_enable_strict_warnings(nsl)
 
@@ -122,6 +130,11 @@ target_link_libraries(nsl PRIVATE
     nsl_stb
     nsl_cjson
 )
+
+if(APPLE)
+    find_library(APPKIT_FRAMEWORK AppKit REQUIRED)
+    target_link_libraries(nsl PRIVATE ${APPKIT_FRAMEWORK})
+endif()
 
 if(UNIX)
     target_link_libraries(nsl PRIVATE m)

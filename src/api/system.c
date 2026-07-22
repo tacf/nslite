@@ -46,16 +46,6 @@ static int f_poll_event(lua_State *L) {
       return 1;
 
     case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-#ifdef __APPLE__
-      // Cocoa's default Window menu turns Cmd+W into a window-close request
-      // before SDL can deliver W to the editor's keymap. Reintroduce the key
-      // event so the configured binding, if any, decides what Cmd+W does.
-      if (SDL_GetModState() & SDL_KMOD_GUI) {
-        lua_pushstring(L, "keypressed");
-        lua_pushstring(L, "w");
-        return 2;
-      }
-#endif
       lua_pushstring(L, "quit");
       return 1;
 
