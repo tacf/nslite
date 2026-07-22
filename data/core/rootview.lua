@@ -48,6 +48,7 @@ function Node:new(type)
   self.size = { x = 0, y = 0 }
   self.views = {}
   self.divider = 0.5
+  self.tab_scroll = 0
   if self.type == "leaf" then
     self:add_view(EmptyView())
   end
@@ -62,6 +63,8 @@ end
 
 function Node:on_mouse_moved(x, y, ...)
   self.hovered_tab = self:get_tab_overlapping_point(x, y)
+  self.hovered_tab_close = self:get_tab_close_overlapping_point(x, y)
+  self.hovered_tab_scroll = self:get_tab_scroll_overlapping_point(x, y)
   if self.type == "leaf" then
     self.active_view:on_mouse_moved(x, y, ...)
   else
@@ -108,12 +111,17 @@ function Node:split(dir, view, locked)
 end
 
 
-function Node:close_active_view(root)
+function Node:close_view(root, view)
   local do_close = function()
+    local idx = self:get_view_idx(view)
+    if not idx then return end
     if #self.views > 1 then
-      local idx = self:get_view_idx(self.active_view)
       table.remove(self.views, idx)
-      self:set_active_view(self.views[idx] or self.views[#self.views])
+      if view == self.active_view then
+        self:set_active_view(self.views[idx] or self.views[#self.views])
+      else
+        self:scroll_tab_into_view(self.active_view)
+      end
     else
       local parent = self:get_parent_node(root)
       local is_a = (parent.a == self)
@@ -132,7 +140,12 @@ function Node:close_active_view(root)
     end
     core.last_active_view = nil
   end
-  self.active_view:try_close(do_close)
+  view:try_close(do_close)
+end
+
+
+function Node:close_active_view(root)
+  self:close_view(root, self.active_view)
 end
 
 
@@ -150,6 +163,7 @@ end
 function Node:set_active_view(view)
   assert(self.type == "leaf", "Tried to set active view on non-leaf node")
   self.active_view = view
+  self:scroll_tab_into_view(view)
   core.set_active_view(view)
 end
 
@@ -206,12 +220,85 @@ function Node:get_divider_overlapping_point(px, py)
 end
 
 
-function Node:get_tab_overlapping_point(px, py)
-  if #self.views == 1 then return nil end
-  local x, y, w, h = self:get_tab_rect(1)
-  if px >= x and py >= y and px < x + w * #self.views and py < y + h then
-    return math.floor((px - x) / w) + 1
+function Node:get_tab_metrics()
+  local h = style.font:get_height() + style.padding.y * 2
+  local view_count = #self.views
+  local overflow = view_count > 1
+               and view_count * style.tab_min_width > self.size.x
+  local button_width = overflow and h or 0
+  local viewport_x = self.position.x + button_width
+  local viewport_w = math.max(0, self.size.x - button_width * 2)
+  local tab_width
+  if overflow then
+    tab_width = style.tab_min_width
+  else
+    tab_width = math.min(style.tab_width,
+      math.ceil(self.size.x / math.max(1, view_count)))
   end
+  local max_scroll = math.max(0, tab_width * view_count - viewport_w)
+  self.tab_scroll = common.clamp(self.tab_scroll or 0, 0, max_scroll)
+  return tab_width, h, overflow, viewport_x, viewport_w, max_scroll
+end
+
+
+function Node:get_tab_bar_overlapping_point(px, py)
+  if #self.views <= 1 then return false end
+  local _, h = self:get_tab_metrics()
+  return px >= self.position.x and px < self.position.x + self.size.x
+     and py >= self.position.y and py < self.position.y + h
+end
+
+
+function Node:get_tab_overlapping_point(px, py)
+  if not self:get_tab_bar_overlapping_point(px, py) then return nil end
+  local tw, _, _, viewport_x, viewport_w = self:get_tab_metrics()
+  if px < viewport_x or px >= viewport_x + viewport_w then return nil end
+  local idx = math.floor((px - viewport_x + self.tab_scroll) / tw) + 1
+  return idx <= #self.views and idx or nil
+end
+
+
+function Node:get_tab_close_overlapping_point(px, py)
+  local idx = self:get_tab_overlapping_point(px, py)
+  if not idx then return nil end
+  local x, _, w, h = self:get_tab_rect(idx)
+  if px >= x + w - h then return idx end
+end
+
+
+function Node:get_tab_scroll_overlapping_point(px, py)
+  if not self:get_tab_bar_overlapping_point(px, py) then return nil end
+  local _, h, overflow = self:get_tab_metrics()
+  if not overflow then return nil end
+  if px < self.position.x + h then return -1 end
+  if px >= self.position.x + self.size.x - h then return 1 end
+end
+
+
+function Node:scroll_tabs(direction)
+  local tw, _, overflow, _, _, max_scroll = self:get_tab_metrics()
+  if overflow then
+    self.tab_scroll = common.clamp(self.tab_scroll + direction * tw, 0, max_scroll)
+  end
+end
+
+
+function Node:scroll_tab_into_view(view)
+  local idx = self:get_view_idx(view)
+  if not idx then return end
+  local tw, _, overflow, _, viewport_w, max_scroll = self:get_tab_metrics()
+  if not overflow then
+    self.tab_scroll = 0
+    return
+  end
+  local tab_left = (idx - 1) * tw
+  local tab_right = tab_left + tw
+  if tab_left < self.tab_scroll then
+    self.tab_scroll = tab_left
+  elseif tab_right > self.tab_scroll + viewport_w then
+    self.tab_scroll = tab_right - viewport_w
+  end
+  self.tab_scroll = common.clamp(self.tab_scroll, 0, max_scroll)
 end
 
 
@@ -229,9 +316,8 @@ end
 
 
 function Node:get_tab_rect(idx)
-  local tw = math.min(style.tab_width, math.ceil(self.size.x / #self.views))
-  local h = style.font:get_height() + style.padding.y * 2
-  return self.position.x + (idx-1) * tw, self.position.y, tw, h
+  local tw, h, _, viewport_x = self:get_tab_metrics()
+  return viewport_x + (idx-1) * tw - self.tab_scroll, self.position.y, tw, h
 end
 
 
@@ -296,7 +382,11 @@ function Node:update_layout()
   if self.type == "leaf" then
     local av = self.active_view
     if #self.views > 1 then
-      local _, _, _, th = self:get_tab_rect(1)
+      local _, th, _, _, viewport_w = self:get_tab_metrics()
+      if self.tab_viewport_width ~= viewport_w then
+        self.tab_viewport_width = viewport_w
+        self:scroll_tab_into_view(av)
+      end
       av.position.x, av.position.y = self.position.x, self.position.y + th
       av.size.x, av.size.y = self.size.x, self.size.y - th
     else
@@ -329,17 +419,21 @@ end
 
 
 function Node:draw_tabs()
-  local x, y, _, h = self:get_tab_rect(1)
+  local tw, h, overflow, viewport_x, viewport_w, max_scroll = self:get_tab_metrics()
+  local x, y = self.position.x, self.position.y
   local ds = style.divider_size
   core.push_clip_rect(x, y, self.size.x, h)
   renderer.draw_rect(x, y, self.size.x, h, style.background2)
   renderer.draw_rect(x, y + h - ds, self.size.x, ds, style.divider)
 
+  core.push_clip_rect(viewport_x, y, viewport_w, h)
   for i, view in ipairs(self.views) do
-    local x, y, w, h = self:get_tab_rect(i)
+    local x = viewport_x + (i - 1) * tw - self.tab_scroll
+    local w = tw
     local text = view:get_name()
+    local is_active = view == self.active_view
     local color = style.dim
-    if view == self.active_view then
+    if is_active then
       color = style.text
       renderer.draw_rect(x, y, w, h, style.background)
       renderer.draw_rect(x + w, y, ds, h, style.divider)
@@ -349,10 +443,35 @@ function Node:draw_tabs()
       color = style.text
     end
     core.push_clip_rect(x, y, w, h)
-    x, w = x + style.padding.x, w - style.padding.x * 2
-    local align = style.font:get_width(text) > w and "left" or "center"
-    common.draw_text(style.font, color, text, align, x, y, w, h)
+    local close_x = x + w - h
+    local text_x = x + style.padding.x
+    local text_w = math.max(0, w - h - style.padding.x * 2)
+    local align = style.font:get_width(text) > text_w and "left" or "center"
+    common.draw_text(style.font, color, text, align, text_x, y, text_w, h)
+    if is_active or i == self.hovered_tab then
+      local close_color = i == self.hovered_tab_close and style.accent or color
+      common.draw_text(style.icon_font, close_color, "x", "center", close_x, y, h, h)
+    end
     core.pop_clip_rect()
+  end
+  core.pop_clip_rect()
+
+  if overflow then
+    local left_x = self.position.x
+    local right_x = self.position.x + self.size.x - h
+    local left_enabled = self.tab_scroll > 0
+    local right_enabled = self.tab_scroll < max_scroll
+    if self.hovered_tab_scroll == -1 and left_enabled then
+      renderer.draw_rect(left_x, y, h, h - ds, style.line_highlight)
+    elseif self.hovered_tab_scroll == 1 and right_enabled then
+      renderer.draw_rect(right_x, y, h, h - ds, style.line_highlight)
+    end
+    renderer.draw_rect(left_x + h - ds, y, ds, h, style.divider)
+    renderer.draw_rect(right_x, y, ds, h, style.divider)
+    local left_color = left_enabled and style.text or style.dim
+    local right_color = right_enabled and style.text or style.dim
+    common.draw_text(style.font, left_color, "<", "center", left_x, y, h, h)
+    common.draw_text(style.font, right_color, ">", "center", right_x, y, h, h)
   end
 
   core.pop_clip_rect()
@@ -468,13 +587,25 @@ function RootView:on_mouse_pressed(button, x, y, clicks)
     return
   end
   local node = self.root_node:get_child_overlapping_point(x, y)
+  local scroll_direction = node:get_tab_scroll_overlapping_point(x, y)
+  if scroll_direction then
+    if button == "left" then
+      node:scroll_tabs(scroll_direction)
+    end
+    return
+  end
   local idx = node:get_tab_overlapping_point(x, y)
   if idx then
-    node:set_active_view(node.views[idx])
+    local close_idx = node:get_tab_close_overlapping_point(x, y)
+    if button == "left" and close_idx then
+      node:close_view(self.root_node, node.views[close_idx])
+    else
+      node:set_active_view(node.views[idx])
+    end
     if button == "middle" then
       node:close_active_view(self.root_node)
     end
-  else
+  elseif not node:get_tab_bar_overlapping_point(x, y) then
     core.set_active_view(node.active_view)
     node.active_view:on_mouse_pressed(button, x, y, clicks)
   end
@@ -515,7 +646,7 @@ function RootView:on_mouse_moved(x, y, dx, dy)
   local div = self.root_node:get_divider_overlapping_point(x, y)
   if div then
     system.set_cursor(div.type == "hsplit" and "sizeh" or "sizev")
-  elseif node:get_tab_overlapping_point(x, y) then
+  elseif node:get_tab_bar_overlapping_point(x, y) then
     system.set_cursor("arrow")
   else
     system.set_cursor(node.active_view.cursor)
@@ -523,15 +654,22 @@ function RootView:on_mouse_moved(x, y, dx, dy)
 end
 
 
-function RootView:on_mouse_wheel(...)
+function RootView:on_mouse_wheel(delta, ...)
   local fv = self:get_active_floating_view()
   if fv then
-    fv:on_mouse_wheel(...)
+    fv:on_mouse_wheel(delta, ...)
     return
   end
   local x, y = self.mouse.x, self.mouse.y
   local node = self.root_node:get_child_overlapping_point(x, y)
-  node.active_view:on_mouse_wheel(...)
+  if node:get_tab_bar_overlapping_point(x, y) then
+    local _, _, overflow = node:get_tab_metrics()
+    if overflow and delta ~= 0 then
+      node:scroll_tabs(delta > 0 and -1 or 1)
+    end
+    return
+  end
+  node.active_view:on_mouse_wheel(delta, ...)
 end
 
 

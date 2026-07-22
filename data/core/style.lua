@@ -6,6 +6,7 @@ style.divider_size = common.round(1 * SCALE)
 style.scrollbar_size = common.round(4 * SCALE)
 style.caret_width = common.round(2 * SCALE)
 style.tab_width = common.round(170 * SCALE)
+style.tab_min_width = common.round(100 * SCALE)
 
 -- floating command palette (configurable)
 style.commandview_corner_radius = common.round(6 * SCALE)

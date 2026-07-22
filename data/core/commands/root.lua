@@ -33,6 +33,7 @@ local t = {
     if idx > 1 then
       table.remove(node.views, idx)
       table.insert(node.views, idx - 1, core.active_view)
+      node:scroll_tab_into_view(core.active_view)
     end
   end,
 
@@ -42,6 +43,7 @@ local t = {
     if idx < #node.views then
       table.remove(node.views, idx)
       table.insert(node.views, idx + 1, core.active_view)
+      node:scroll_tab_into_view(core.active_view)
     end
   end,
 
