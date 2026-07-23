@@ -3,7 +3,9 @@
 Text editor based on [rxi/lite](https://github.com/rxi/lite).
 
 - The editor is mainly a rendering engine built in C and constructed through the supplied Lua API.
-- SDL3 is used as the main rendering library (including SDL3 Image).
+- SDL3 is used as the main rendering library.
+- stb_truetype is used for font loading
+- stb_image and nanosvg are used for image loading
 - Lua 5.5 is the base Lua version.
 
 Features:
@@ -62,12 +64,11 @@ so they may not match exactly what you'd expect to see (you can check the icons
 font file used by this editor that is present in the main data/ folder as an
 example of this).
 
-
 ### Image View
 
 Editor allows the opening and view of most common types of image formats. This
-is achieved by the use of the SDL3 Image library and with it the Lua api gets 
-image rendering capabilities.
+is achieved by the use of the stb_image and nanosvg libraries and with them the
+Lua api gets image rendering capabilities.
 
 ## Development
 

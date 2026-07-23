@@ -20,16 +20,14 @@ function(nslite_enable_strict_warnings target)
     endif()
 endfunction()
 
-option(NSLITE_USE_SYSTEM_LIBS "Use SDL3, SDL3_image, PCRE2, and Lua from the system" OFF)
+option(NSLITE_USE_SYSTEM_LIBS "Use SDL3, PCRE2, and Lua from the system" OFF)
 
 if(NSLITE_USE_SYSTEM_LIBS)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
-    pkg_check_modules(SDL3_IMAGE REQUIRED IMPORTED_TARGET sdl3-image)
     pkg_check_modules(PCRE2 REQUIRED IMPORTED_TARGET libpcre2-8)
     pkg_check_modules(LUA REQUIRED IMPORTED_TARGET lua>=5.5)
     set(NSLITE_SDL_TARGET PkgConfig::SDL3)
-    set(NSLITE_SDL_IMAGE_TARGET PkgConfig::SDL3_IMAGE)
     set(NSLITE_PCRE2_TARGET PkgConfig::PCRE2)
     set(NSLITE_LUA_TARGET PkgConfig::LUA)
 else()
@@ -48,29 +46,6 @@ else()
     
     FetchContent_MakeAvailable(SDL3)
 
-    FetchContent_Declare(
-        SDL3_image
-        GIT_REPOSITORY https://github.com/libsdl-org/SDL_image.git
-        GIT_TAG        main
-        GIT_SHALLOW    TRUE
-        GIT_SUBMODULES external/libwebp
-        GIT_SUBMODULES_RECURSE TRUE
-    )
-
-    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-    set(SDLIMAGE_INSTALL OFF CACHE BOOL "" FORCE)
-    set(SDLIMAGE_SAMPLES OFF CACHE BOOL "" FORCE)
-    set(SDLIMAGE_TESTS OFF CACHE BOOL "" FORCE)
-    set(SDLIMAGE_VENDORED ON CACHE BOOL "" FORCE)
-    set(SDLIMAGE_DEPS_SHARED OFF CACHE BOOL "" FORCE)
-    set(SDLIMAGE_BACKEND_STB ON CACHE BOOL "" FORCE)
-    set(SDLIMAGE_PNG_LIBPNG OFF CACHE BOOL "" FORCE)
-    set(SDLIMAGE_AVIF OFF CACHE BOOL "" FORCE)
-    set(SDLIMAGE_JXL OFF CACHE BOOL "" FORCE)
-    set(SDLIMAGE_TIF OFF CACHE BOOL "" FORCE)
-
-    FetchContent_MakeAvailable(SDL3_image)
-    
     set(BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
     set(PCRE2_BUILD_PCRE2_8 ON CACHE BOOL "" FORCE)
     set(PCRE2_BUILD_PCRE2_16 OFF CACHE BOOL "" FORCE)
@@ -112,13 +87,22 @@ else()
     endif()
     
     set(NSLITE_SDL_TARGET SDL3::SDL3)
-    set(NSLITE_SDL_IMAGE_TARGET SDL3_image::SDL3_image)
     set(NSLITE_PCRE2_TARGET pcre2-8-static)
     set(NSLITE_LUA_TARGET lua)
 endif()
 
-file(GLOB_RECURSE STB_SOURCES CONFIGURE_DEPENDS src/lib/stb/*.c)
-add_library(nsl_stb STATIC ${STB_SOURCES})
+set(NSLITE_IMAGE_SOURCES
+    src/lib/nanosvg/nanosvg.c
+    src/lib/stb/stb_image.c
+)
+add_library(nsl_image STATIC ${NSLITE_IMAGE_SOURCES})
+if(MSVC)
+    target_compile_options(nsl_image PRIVATE /O1)
+elseif(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(nsl_image PRIVATE -Os)
+endif()
+
+add_library(nsl_stb STATIC src/lib/stb/stb_truetype.c)
 
 add_library(nsl_cjson STATIC src/lib/cjson/cJSON.c)
 target_include_directories(nsl_cjson PUBLIC src/lib/cjson)
@@ -152,9 +136,9 @@ target_include_directories(nsl PRIVATE src)
 
 target_link_libraries(nsl PRIVATE
     ${NSLITE_SDL_TARGET}
-    ${NSLITE_SDL_IMAGE_TARGET}
     ${NSLITE_LUA_TARGET}
     ${NSLITE_PCRE2_TARGET}
+    nsl_image
     nsl_stb
     nsl_cjson
 )

@@ -2,9 +2,12 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <limits.h>
 #include <math.h>
 #include <string.h>
-#include <SDL3_image/SDL_image.h>
+#include "lib/nanosvg/nanosvg.h"
+#include "lib/nanosvg/nanosvgrast.h"
+#include "lib/stb/stb_image.h"
 #include "lib/stb/stb_truetype.h"
 #include "renderer.h"
 #include "utils/utf8.h"
@@ -101,32 +104,98 @@ RenImage *ren_new_image(int width, int height) {
 }
 
 
+static void convert_rgba_to_ren_colors(RenColor *pixels, size_t count) {
+  for (size_t i = 0; i < count; i++) {
+    uint8_t red = pixels[i].b;
+    pixels[i].b = pixels[i].r;
+    pixels[i].r = red;
+  }
+}
+
+
+static bool valid_image_size(int width, int height) {
+  if (width <= 0 || height <= 0) { return false; }
+  size_t maximum_pixels = (SIZE_MAX - sizeof(RenImage)) / sizeof(RenColor);
+  return (size_t) width <= maximum_pixels / (size_t) height;
+}
+
+
+static RenImage *load_raster_image(const uint8_t *data, size_t size) {
+  if (size > INT_MAX) {
+    SDL_SetError("image file is too large");
+    return NULL;
+  }
+
+  int width, height, channels;
+  stbi_uc *rgba = stbi_load_from_memory(data, (int) size, &width, &height,
+    &channels, STBI_rgb_alpha);
+  if (!rgba) {
+    SDL_SetError("unsupported or invalid image: %s", stbi_failure_reason());
+    return NULL;
+  }
+  if (!valid_image_size(width, height)) {
+    stbi_image_free(rgba);
+    SDL_SetError("image dimensions are too large");
+    return NULL;
+  }
+
+  RenImage *image = ren_new_image(width, height);
+  size_t pixel_count = (size_t) width * (size_t) height;
+  memcpy(image->pixels, rgba, pixel_count * sizeof(RenColor));
+  stbi_image_free(rgba);
+  convert_rgba_to_ren_colors(image->pixels, pixel_count);
+  return image;
+}
+
+
+static RenImage *load_svg_image(char *data) {
+  NSVGimage *svg = nsvgParse(data, "px", 96.0f);
+  if (!svg || svg->width <= 0 || svg->height <= 0
+      || svg->width > INT_MAX || svg->height > INT_MAX) {
+    nsvgDelete(svg);
+    SDL_SetError("unsupported or invalid SVG image");
+    return NULL;
+  }
+
+  int width = (int) ceilf(svg->width);
+  int height = (int) ceilf(svg->height);
+  if (!valid_image_size(width, height)) {
+    nsvgDelete(svg);
+    SDL_SetError("SVG dimensions are too large");
+    return NULL;
+  }
+  NSVGrasterizer *rasterizer = nsvgCreateRasterizer();
+  if (!rasterizer) {
+    nsvgDelete(svg);
+    SDL_SetError("failed to create SVG rasterizer");
+    return NULL;
+  }
+
+  RenImage *image = ren_new_image(width, height);
+  nsvgRasterize(rasterizer, svg, 0, 0, 1, (uint8_t *) image->pixels,
+    width, height, width * (int) sizeof(RenColor));
+  nsvgDeleteRasterizer(rasterizer);
+  nsvgDelete(svg);
+  convert_rgba_to_ren_colors(image->pixels, (size_t) width * (size_t) height);
+  return image;
+}
+
+
+static bool has_svg_extension(const char *filename) {
+  const char *extension = strrchr(filename, '.');
+  return extension && SDL_strcasecmp(extension, ".svg") == 0;
+}
+
+
 RenImage *ren_load_image(const char *filename) {
-  SDL_Surface *loaded = IMG_Load(filename);
-  if (!loaded) { return NULL; }
+  size_t size;
+  uint8_t *data = SDL_LoadFile(filename, &size);
+  if (!data) { return NULL; }
 
-  SDL_Surface *surface = SDL_ConvertSurface(loaded, SDL_PIXELFORMAT_ARGB8888);
-  SDL_DestroySurface(loaded);
-  if (!surface) { return NULL; }
-
-  bool locked = false;
-  if (SDL_MUSTLOCK(surface)) {
-    if (!SDL_LockSurface(surface)) {
-      SDL_DestroySurface(surface);
-      return NULL;
-    }
-    locked = true;
-  }
-
-  RenImage *image = ren_new_image(surface->w, surface->h);
-  for (int y = 0; y < surface->h; y++) {
-    memcpy(image->pixels + (size_t) y * (size_t) surface->w,
-      (uint8_t *) surface->pixels + (size_t) y * (size_t) surface->pitch,
-      (size_t) surface->w * sizeof(RenColor));
-  }
-
-  if (locked) { SDL_UnlockSurface(surface); }
-  SDL_DestroySurface(surface);
+  RenImage *image = has_svg_extension(filename)
+    ? load_svg_image((char *) data)
+    : load_raster_image(data, size);
+  SDL_free(data);
   return image;
 }
 

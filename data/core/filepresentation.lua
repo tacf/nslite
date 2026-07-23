@@ -46,9 +46,8 @@ end
 filepresentation.add {
   name = "image",
   files = {
-    "%.png$", "%.jpe?g$", "%.jfif$", "%.bmp$", "%.gif$", "%.webp$",
-    "%.svg$", "%.tga$", "%.qoi$", "%.ico$", "%.pnm$", "%.ppm$",
-    "%.pgm$", "%.pbm$",
+    "%.png$", "%.jpe?g$", "%.jfif$", "%.bmp$", "%.gif$", "%.svg$",
+    "%.tga$", "%.pnm$", "%.ppm$", "%.pgm$",
   },
   open = function(filename)
     local ImageView = require "core.presentations.image"
