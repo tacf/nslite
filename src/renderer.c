@@ -151,7 +151,8 @@ static RenImage *load_raster_image(const uint8_t *data, size_t size) {
 static RenImage *load_svg_image(char *data) {
   NSVGimage *svg = nsvgParse(data, "px", 96.0f);
   if (!svg || svg->width <= 0 || svg->height <= 0
-      || svg->width > INT_MAX || svg->height > INT_MAX) {
+      || (double) svg->width > (double) INT_MAX
+      || (double) svg->height > (double) INT_MAX) {
     nsvgDelete(svg);
     SDL_SetError("unsupported or invalid SVG image");
     return NULL;
