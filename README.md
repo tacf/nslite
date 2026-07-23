@@ -101,3 +101,21 @@ make clean    # remove the build directory
 
 This project is free software; you can redistribute it and/or modify it under
 the terms of the MIT license. See [LICENSE](LICENSE) for details.
+
+You can find the vendored libs and their respective licenses in `src/lib`.
+
+The bundled [Nonicons](https://github.com/yamatsum/nonicons) font is also
+MIT-licensed; its copyright notice and license are included in
+[`data/fonts/nonicons.LICENSE.txt`](data/fonts/nonicons.LICENSE.txt).
+
+
+## Motivation & Credits
+
+This project is heavily influenced by some bigger ones, namely, 
+[Pragtical](https://github.com/pragtical/) and 
+[Lite-XL](https://github.com/lite-xl/lite-xl). The biggest motivator being,
+[fred - FRiendly EDitor](https://fred-dev.tech/). Which made me want to do 
+things a bit differently than the other derivatives, in particular, move 
+some of the heavy lifting into the C side in order to implement some of the
+more advanced and performant technics for text handling while preserving the
+flexible aspect of using Lua as a configuration and _rendering definition_.

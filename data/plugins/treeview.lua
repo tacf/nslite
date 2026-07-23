@@ -137,44 +137,57 @@ function TreeView:update()
 end
 
 
+function TreeView:get_item_icon(item, active, hovered)
+  local icon = "f"
+  if item.type == "dir" then
+    icon = item.expanded and "D" or "d"
+  end
+  local color = (active or hovered) and style.accent or style.text
+  return icon, style.icon_font, color
+end
+
+
+function TreeView:draw_item_chevron(item, active, hovered, x, y, w, h)
+  if item.type == "dir" then
+    local icon = item.expanded and "-" or "+"
+    local color = (active or hovered) and style.accent or style.text
+    common.draw_text(style.icon_font, color, icon, nil, x, y, 0, h)
+  end
+  return style.padding.x
+end
+
+
+function TreeView:draw_item_icon(item, active, hovered, x, y, w, h)
+  local icon, font, color = self:get_item_icon(item, active, hovered)
+  common.draw_text(font, color, icon, nil, x, y, 0, h)
+  return font:get_width(icon)
+end
+
+
 function TreeView:draw()
   self:draw_background(style.background2)
 
-  local icon_width = style.icon_font:get_width("D")
   local spacing = style.font:get_width(" ") * 2
 
   local doc = core.active_view.doc
   local active_filename = doc and system.absolute_path(doc:get_filename() or "")
 
   for item, ix,y,w,h in self:each_item() do
-    local color = style.text
+    local active = item.abs_filename == active_filename
+    local hovered = item == self.hovered_item
+    local color = active and style.accent or style.text
     local x = ix
 
-    -- highlight active_view doc
-    if item.abs_filename == active_filename then
-      color = style.accent
-    end
-
     -- hovered item background
-    if item == self.hovered_item then
+    if hovered then
       renderer.draw_rect(x, y, w, h, style.line_highlight)
       color = style.accent
     end
 
     -- icons
     x = x + item.depth * style.padding.x + style.padding.x
-    if item.type == "dir" then
-      local icon1 = item.expanded and "-" or "+"
-      local icon2 = item.expanded and "D" or "d"
-      common.draw_text(style.icon_font, color, icon1, nil, x, y, 0, h)
-      x = x + style.padding.x
-      common.draw_text(style.icon_font, color, icon2, nil, x, y, 0, h)
-      x = x + icon_width
-    else
-      x = x + style.padding.x
-      common.draw_text(style.icon_font, color, "f", nil, x, y, 0, h)
-      x = x + icon_width
-    end
+    x = x + self:draw_item_chevron(item, active, hovered, x, y, w, h)
+    x = x + self:draw_item_icon(item, active, hovered, x, y, w, h)
 
     -- text
     x = x + spacing
@@ -196,3 +209,5 @@ command.add(nil, {
 })
 
 keymap.add { ["mod+\\"] = "treeview:toggle" }
+
+return TreeView
