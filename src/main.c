@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include <SDL3/SDL.h>
 #include "api/api.h"
 #include "renderer.h"
@@ -9,7 +8,7 @@
 #ifdef __APPLE__
 #include "utils/macos.h"
 #endif
-#ifdef _WIND32
+#ifdef _WIN32
 #include <windows.h>
 #else
 #include <unistd.h>
