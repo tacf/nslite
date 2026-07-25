@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <SDL3/SDL.h>
 #include "api/api.h"
 #include "renderer.h"
@@ -41,6 +42,7 @@ static void init_window_icon(void) {
 
 
 int main(int argc, char **argv) {
+  if (daemon(1, 0) < 0) exit(EXIT_FAILURE);
   SDL_Init(SDL_INIT_VIDEO);
   SDL_EnableScreenSaver();
 
