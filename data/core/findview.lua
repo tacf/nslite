@@ -190,10 +190,11 @@ function FindView:update()
   if not self.target then return end
 
   local root = core.root_view
+
   self.size.x = math.min(self.width, math.max(100, root.size.x - style.padding.x * 2))
   self.size.y = self.font:get_height() + style.padding.y * 2
   self.position.x = root.size.x - self.size.x - style.padding.x
-  self.position.y = style.padding.y
+  self.position.y = style.padding.y + self.target.position.y
 
   if self.last_input_change_id ~= self.doc:get_change_id() then
     self:update_matches(true)
