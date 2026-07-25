@@ -1,13 +1,50 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+
 #include <SDL3/SDL.h>
 #include "api/api.h"
 #include "renderer.h"
 #include "utils/window.h"
 #ifdef __APPLE__
 #include "utils/macos.h"
+#endif
+#ifdef _WIND32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
+
+
+
+static int detach_self(void) {
+#ifdef _WIN32
+    if (GetEnvironmentVariableW(L"NSLITE_DETACHED", NULL, 0) != 0)
+        return 0;                    /* we ARE the detached copy; carry on */
+
+    SetEnvironmentVariableW(L"NSLITE_DETACHED", L"1");
+
+    wchar_t *cmd = _wcsdup(GetCommandLineW());   /* CreateProcessW may write to it */
+    STARTUPINFOW si = { .cb = sizeof si };
+    PROCESS_INFORMATION pi;
+
+    BOOL ok = CreateProcessW(NULL, cmd, NULL, NULL, FALSE,
+                             DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP,
+                             NULL, NULL, &si, &pi);   /* NULL env = inherit, marker included */
+    free(cmd);
+    if (!ok) return -1;
+
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    ExitProcess(0);                  /* parent exits, shell gets its prompt back */
+#else
+  // Disable warnings of deprecation for MacOS (been deprecated for 15 years as usual from Apple)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+  if (daemon(1, 0) < 0) { perror("daemon"); return 1; }
+#pragma GCC diagnostic pop
+  return 0;
+}
 #endif
 
 
@@ -42,7 +79,8 @@ static void init_window_icon(void) {
 
 
 int main(int argc, char **argv) {
-  if (daemon(1, 0) < 0) exit(EXIT_FAILURE);
+  if (detach_self() != 0) return 1;
+
   SDL_Init(SDL_INIT_VIDEO);
   SDL_EnableScreenSaver();
 
