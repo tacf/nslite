@@ -1,8 +1,16 @@
+#ifndef _WIN32
+#define _XOPEN_SOURCE 700
+#endif
+
 #include <SDL3/SDL.h>
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #include "utils/path.h"
 
 
@@ -25,6 +33,37 @@ bool path_is_absolute(const char *path) {
   if (!path || !path[0]) { return false; }
   return path[0] == '/' || path[0] == '\\'
     || (path[1] && isalpha((unsigned char) path[0]) && path[1] == ':');
+}
+
+
+char *path_canonicalize(const char *path) {
+  if (!path) { return NULL; }
+#ifdef _WIN32
+  wchar_t *wide = (wchar_t *) SDL_iconv_string(
+    "WCHAR_T", "UTF-8", path, SDL_strlen(path) + 1);
+  if (!wide) { return NULL; }
+  DWORD required = GetFullPathNameW(wide, 0, NULL, NULL);
+  if (!required) {
+    SDL_free(wide);
+    return NULL;
+  }
+  wchar_t *full = SDL_malloc((size_t) required * sizeof(*full));
+  if (!full || !GetFullPathNameW(wide, required, full, NULL)) {
+    SDL_free(full);
+    SDL_free(wide);
+    return NULL;
+  }
+  char *result = SDL_iconv_wchar_utf8(full);
+  SDL_free(full);
+  SDL_free(wide);
+  return result;
+#else
+  char *native = realpath(path, NULL);
+  if (!native) { return NULL; }
+  char *result = SDL_strdup(native);
+  free(native);
+  return result;
+#endif
 }
 
 

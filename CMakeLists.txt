@@ -161,12 +161,10 @@ endif()
 file(GLOB_RECURSE DATA_FILES CONFIGURE_DEPENDS data/*.lua)
 
 add_custom_target(copy_data ALL
+    COMMAND ${CMAKE_COMMAND} -E rm -rf $<TARGET_FILE_DIR:nsl>/data
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:nsl>/data
     DEPENDS ${DATA_FILES}
 )
 
-add_custom_command(TARGET nsl POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:nsl>/data
-)
+add_dependencies(nsl copy_data)

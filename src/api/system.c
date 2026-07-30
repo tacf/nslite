@@ -258,14 +258,16 @@ static int f_list_dir(lua_State *L) {
 static int f_absolute_path(lua_State *L) {
   const char *path = luaL_checkstring(L, 1);
   char *cwd = NULL;
-  char *res = NULL;
+  char *joined = NULL;
   if (path_is_absolute(path)) {
-    res = SDL_strdup(path);
+    joined = SDL_strdup(path);
   } else {
     cwd = SDL_GetCurrentDirectory();
-    if (cwd) { SDL_asprintf(&res, "%s%s", cwd, path); }
+    if (cwd) { SDL_asprintf(&joined, "%s%s", cwd, path); }
   }
   SDL_free(cwd);
+  char *res = path_canonicalize(joined);
+  SDL_free(joined);
   if (!res || !SDL_GetPathInfo(res, NULL)) {
     SDL_free(res);
     return 0;

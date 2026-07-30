@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.4.1
+
+### Fixed
+
+- LSP workspace and document paths are canonicalized before use, preventing
+  mismatches when resolving projects, references, and other server data.
+
 ## v1.4.0
 
 ### Added

@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 bool path_is_absolute(const char *path);
+char *path_canonicalize(const char *path);
 char *path_to_file_uri(const char *path);
 char *file_uri_to_path(const char *uri);
 
