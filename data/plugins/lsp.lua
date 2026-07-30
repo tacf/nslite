@@ -1,6 +1,5 @@
 local core = require "core"
 local config = require "core.config"
-local keymap = require "core.keymap"
 local style = require "core.style"
 local DocView = require "core.docview"
 local StatusView = require "core.statusview"
@@ -10,7 +9,7 @@ local clients = setmetatable({}, { __mode = "k" })
 
 
 local function primary_modifier_down()
-  return keymap.modkeys[PLATFORM == "macOS" and "cmd" or "ctrl"]
+  return system.key_modifier_down(PLATFORM == "macOS" and "cmd" or "ctrl")
 end
 
 

@@ -161,6 +161,19 @@ static int f_set_cursor(lua_State *L) {
 }
 
 
+static const char *modifier_opts[] = { "ctrl", "shift", "alt", "cmd", NULL };
+
+static const SDL_Keymod modifier_masks[] = {
+  SDL_KMOD_CTRL, SDL_KMOD_SHIFT, SDL_KMOD_ALT, SDL_KMOD_GUI
+};
+
+static int f_key_modifier_down(lua_State *L) {
+  int opt = luaL_checkoption(L, 1, NULL, modifier_opts);
+  lua_pushboolean(L, (SDL_GetModState() & modifier_masks[opt]) != 0);
+  return 1;
+}
+
+
 static int f_set_window_title(lua_State *L) {
   const char *title = luaL_checkstring(L, 1);
   SDL_SetWindowTitle(window, title);
@@ -363,6 +376,7 @@ static int f_fuzzy_match(lua_State *L) {
 
 static const luaL_Reg lib[] = { { "poll_event", f_poll_event },
   { "wait_event", f_wait_event }, { "set_cursor", f_set_cursor },
+  { "key_modifier_down", f_key_modifier_down },
   { "set_window_title", f_set_window_title },
   { "set_window_mode", f_set_window_mode },
   { "window_has_focus", f_window_has_focus },
