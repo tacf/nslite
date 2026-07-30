@@ -43,8 +43,8 @@ static int detach_self(void) {
   if (daemon(1, 0) < 0) { perror("daemon"); return 1; }
 #pragma GCC diagnostic pop
   return 0;
-}
 #endif
+}
 
 
 SDL_Window *window;
