@@ -64,7 +64,6 @@ end
 function Node:on_mouse_moved(x, y, ...)
   self.hovered_tab = self:get_tab_overlapping_point(x, y)
   self.hovered_tab_close = self:get_tab_close_overlapping_point(x, y)
-  self.hovered_tab_scroll = self:get_tab_scroll_overlapping_point(x, y)
   if self.type == "leaf" then
     self.active_view:on_mouse_moved(x, y, ...)
   else
@@ -90,6 +89,10 @@ end
 
 local type_map = { up="vsplit", down="vsplit", left="hsplit", right="hsplit" }
 
+
+-- locked == true: single-view pane sized by the view itself (not node.divider),
+-- so it can enforce min width (TreeView). Can't hold tabs or be focused;
+-- divider drags resize it by writing back into the view's size.
 function Node:split(dir, view, locked)
   assert(self.type == "leaf", "Tried to split non-leaf node")
   local type = assert(type_map[dir], "Invalid direction")
@@ -223,18 +226,10 @@ end
 function Node:get_tab_metrics()
   local h = style.font:get_height() + style.padding.y * 2
   local view_count = #self.views
-  local overflow = view_count > 1
-               and view_count * style.tab_min_width > self.size.x
-  local button_width = overflow and h or 0
-  local viewport_x = self.position.x + button_width
-  local viewport_w = math.max(0, self.size.x - button_width * 2)
-  local tab_width
-  if overflow then
-    tab_width = style.tab_min_width
-  else
-    tab_width = math.min(style.tab_width,
-      math.ceil(self.size.x / math.max(1, view_count)))
-  end
+  local tab_width = style.tab_width
+  local viewport_x = self.position.x
+  local viewport_w = self.size.x
+  local overflow = tab_width * view_count > viewport_w
   local max_scroll = math.max(0, tab_width * view_count - viewport_w)
   self.tab_scroll = common.clamp(self.tab_scroll or 0, 0, max_scroll)
   return tab_width, h, overflow, viewport_x, viewport_w, max_scroll
@@ -263,15 +258,6 @@ function Node:get_tab_close_overlapping_point(px, py)
   if not idx then return nil end
   local x, _, w, h = self:get_tab_rect(idx)
   if px >= x + w - h then return idx end
-end
-
-
-function Node:get_tab_scroll_overlapping_point(px, py)
-  if not self:get_tab_bar_overlapping_point(px, py) then return nil end
-  local _, h, overflow = self:get_tab_metrics()
-  if not overflow then return nil end
-  if px < self.position.x + h then return -1 end
-  if px >= self.position.x + self.size.x - h then return 1 end
 end
 
 
@@ -452,33 +438,20 @@ function Node:draw_tabs()
     local close_x = x + w - h
     local text_x = x + style.padding.x
     local text_w = math.max(0, w - h - style.padding.x * 2)
-    local align = style.font:get_width(text) > text_w and "left" or "center"
-    common.draw_text(style.font, color, text, align, text_x, y, text_w, h)
-    if is_active or i == self.hovered_tab then
-      local close_color = i == self.hovered_tab_close and style.accent or color
-      common.draw_text(style.icon_font, close_color, "x", "center", close_x, y, h, h)
+    if style.font:get_width(text) > text_w then
+      local suffix = "..."
+      local available = text_w - style.font:get_width(suffix)
+      local cropped = text
+      while #cropped > 0 and style.font:get_width(cropped) > available do
+        cropped = cropped:sub(1, -2)
+      end
+      common.draw_text(style.font, color, cropped .. suffix, "left", text_x, y, text_w, h)
+    else
+      common.draw_text(style.font, color, text, "center", text_x, y, text_w, h)
     end
     core.pop_clip_rect()
   end
   core.pop_clip_rect()
-
-  if overflow then
-    local left_x = self.position.x
-    local right_x = self.position.x + self.size.x - h
-    local left_enabled = self.tab_scroll > 0
-    local right_enabled = self.tab_scroll < max_scroll
-    if self.hovered_tab_scroll == -1 and left_enabled then
-      renderer.draw_rect(left_x, y, h, h - ds, style.line_highlight)
-    elseif self.hovered_tab_scroll == 1 and right_enabled then
-      renderer.draw_rect(right_x, y, h, h - ds, style.line_highlight)
-    end
-    renderer.draw_rect(left_x + h - ds, y, ds, h, style.divider)
-    renderer.draw_rect(right_x, y, ds, h, style.divider)
-    local left_color = left_enabled and style.text or style.dim
-    local right_color = right_enabled and style.text or style.dim
-    common.draw_text(style.font, left_color, "<", "center", left_x, y, h, h)
-    common.draw_text(style.font, right_color, ">", "center", right_x, y, h, h)
-  end
 
   core.pop_clip_rect()
 end
@@ -595,13 +568,6 @@ function RootView:on_mouse_pressed(button, x, y, clicks)
     return
   end
   local node = self.root_node:get_child_overlapping_point(x, y)
-  local scroll_direction = node:get_tab_scroll_overlapping_point(x, y)
-  if scroll_direction then
-    if button == "left" then
-      node:scroll_tabs(scroll_direction)
-    end
-    return
-  end
   local idx = node:get_tab_overlapping_point(x, y)
   if idx then
     local close_idx = node:get_tab_close_overlapping_point(x, y)
