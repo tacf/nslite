@@ -221,6 +221,24 @@ static int f_show_confirm_dialog(lua_State *L) {
   return 1;
 }
 
+static int f_show_error_dialog(lua_State *L) {
+  const char *title = luaL_checkstring(L, 1);
+  const char *msg = luaL_checkstring(L, 2);
+
+  SDL_MessageBoxButtonData buttons[] = {
+    { SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 0, "OK" },
+  };
+  SDL_MessageBoxData data = {
+    .flags = SDL_MESSAGEBOX_ERROR,
+    .title = title,
+    .message = msg,
+    .numbuttons = 1,
+    .buttons = buttons,
+  };
+  SDL_ShowMessageBox(&data, NULL);
+  return 0;
+}
+
 
 typedef struct {
   lua_State *L;
@@ -382,6 +400,7 @@ static const luaL_Reg lib[] = { { "poll_event", f_poll_event },
   { "set_window_title", f_set_window_title },
   { "set_window_mode", f_set_window_mode },
   { "window_has_focus", f_window_has_focus },
+  { "show_error_dialog", f_show_error_dialog },
   { "show_confirm_dialog", f_show_confirm_dialog }, { "list_dir", f_list_dir },
   { "absolute_path", f_absolute_path }, { "get_file_info", f_get_file_info },
   { "get_clipboard", f_get_clipboard }, { "set_clipboard", f_set_clipboard },
