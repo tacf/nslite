@@ -125,12 +125,14 @@ end
 
 function TreeView:update()
   -- update width
-  local dest = self.visible and config.treeview_size or 0
-  if self.init_size then
-    self.size.x = dest
+  if self.init_size or self.size.x < config.treeview_size then
+    self.size.x = self.visible and config.treeview_size or 0
     self.init_size = false
-  else
-    self:move_towards(self.size, "x", dest)
+  elseif self.size.x > config.treeview_size * 2 then
+    self.size.x = self.visible and config.treeview_size * 2 or 0
+    self.init_size = false
+  elseif not self.visible then
+    self:move_towards(self.size, "x", 0)
   end
 
   TreeView.super.update(self)
@@ -205,6 +207,9 @@ node:split("left", view, true)
 command.add(nil, {
   ["treeview:toggle"] = function()
     view.visible = not view.visible
+    if view.visible then
+      view.size.x = config.treeview_size
+    end
   end,
 })
 

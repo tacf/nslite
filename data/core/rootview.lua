@@ -367,6 +367,12 @@ local function calc_split_sizes(self, x, y, x1, x2)
   else
     n = math.floor(self.size[x] * self.divider)
   end
+
+  -- syncronize divider position
+  if self.size[x] > 0 then
+    self.divider = n / self.size[x]
+  end
+
   self.a.position[x] = self.position[x]
   self.a.position[y] = self.position[y]
   self.a.size[x] = n - ds
@@ -585,6 +591,7 @@ function RootView:on_mouse_pressed(button, x, y, clicks)
   local div = self.root_node:get_divider_overlapping_point(x, y)
   if div then
     self.dragged_divider = div
+    self.resized_detached = false
     return
   end
   local node = self.root_node:get_child_overlapping_point(x, y)
@@ -616,6 +623,7 @@ end
 function RootView:on_mouse_released(...)
   if self.dragged_divider then
     self.dragged_divider = nil
+    self.resized_detached = nil
   end
   self.root_node:on_mouse_released(...)
 end
@@ -632,14 +640,47 @@ function RootView:on_mouse_moved(x, y, dx, dy)
 
   if self.dragged_divider then
     local node = self.dragged_divider
-    if node.type == "hsplit" then
-      node.divider = node.divider + dx / node.size.x
-    else
-      node.divider = node.divider + dy / node.size.y
+    local divider_size = style.divider_size
+    local detach_threshold = style.font:get_height() * 3
+
+    -- only follow the cursor while attached
+    if not self.resize_detached then
+      if node.type == "hsplit" then
+        node.divider = node.divider + dx / node.size.x
+      else
+        node.divider = node.divider + dy / node.size.y
+      end
+      node.divider = common.clamp(node.divider, 0.01, 0.99)
+
+      local ax, ay = node.a:get_locked_size()
+      local bx, by = node.b:get_locked_size()
+      if node.type == "hsplit" then
+        if ax then node.a.active_view.size.x = node.size.x * node.divider - divider_size end
+        if bx then node.b.active_view.size.x = node.size.x * (1 - node.divider) - divider_size end
+      else
+        if ay then node.a.active_view.size.y = node.size.y * node.divider - divider_size end
+        if by then node.b.active_view.size.y = node.size.y * (1 - node.divider) - divider_size end
+      end
     end
-    node.divider = common.clamp(node.divider, 0.01, 0.99)
+
+    -- freeze while detached; unfreeze when the cursor returns within range
+    -- this accounts for nodes that internally lock their size (like setting a min/max size, eg, TreeView)
+    local divider_pos
+    if node.type == "hsplit" then
+      divider_pos = node.position.x + node.size.x * node.divider
+    else
+      divider_pos = node.position.y + node.size.y * node.divider
+    end
+    local dist = node.type == "hsplit" and (x - divider_pos) or (y - divider_pos)
+    if math.abs(dist) > detach_threshold then
+      self.resize_detached = true
+    elseif self.root_node:get_divider_overlapping_point(x, y) then
+      self.resize_detached = false
+    end
+
     return
   end
+
 
   self.root_node:on_mouse_moved(x, y, dx, dy)
 
