@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(nsl C)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 if(APPLE)
     enable_language(OBJC)
 endif()

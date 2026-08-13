@@ -13,35 +13,103 @@
 #else
 #include <unistd.h>
 #endif
+#ifdef __APPLE__
+#include <spawn.h>
+#include <mach-o/dyld.h>
+#include <fcntl.h>
+#include <limits.h>
+extern char **environ;
+#endif
 
 
-
-static int detach_self(void) {
+static int detach_self(int argc, char **argv) {
 #ifdef _WIN32
-    if (GetEnvironmentVariableW(L"NSLITE_DETACHED", NULL, 0) != 0)
-        return 0;                    /* we ARE the detached copy; carry on */
+  (void) argc;
+  (void) argv;
+  if (GetEnvironmentVariableW(L"NSLITE_DETACHED", NULL, 0) != 0)
+    return 0; /* we ARE the detached copy; carry on */
 
-    SetEnvironmentVariableW(L"NSLITE_DETACHED", L"1");
+  SetEnvironmentVariableW(L"NSLITE_DETACHED", L"1");
 
-    wchar_t *cmd = _wcsdup(GetCommandLineW());   /* CreateProcessW may write to it */
-    STARTUPINFOW si = { .cb = sizeof si };
-    PROCESS_INFORMATION pi;
+  wchar_t *cmd =
+    _wcsdup(GetCommandLineW()); /* CreateProcessW may write to it */
+  STARTUPINFOW si = { .cb = sizeof si };
+  PROCESS_INFORMATION pi;
 
-    BOOL ok = CreateProcessW(NULL, cmd, NULL, NULL, FALSE,
-                             DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP,
-                             NULL, NULL, &si, &pi);   /* NULL env = inherit, marker included */
-    free(cmd);
-    if (!ok) return -1;
+  BOOL ok = CreateProcessW(NULL, cmd, NULL, NULL, FALSE,
+    DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP, NULL, NULL, &si,
+    &pi); /* NULL env = inherit, marker included */
+  free(cmd);
+  if (!ok) return -1;
 
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
-    ExitProcess(0);                  /* parent exits, shell gets its prompt back */
+  CloseHandle(pi.hProcess);
+  CloseHandle(pi.hThread);
+  ExitProcess(0); /* parent exits, shell gets its prompt back */
+#elif defined(__APPLE__)
+  // daemon(3) is fork() without exec(). On macOS that's unsafe once AppKit/
+  // Metal are loaded (dyld loads them before main() runs): if fork() lands
+  // while one of their background threads is mid class-init, the child loses
+  // that thread and macOS aborts it on purpose rather than risk a deadlock
+  // (see objc4's forkInitialize.m; same bug kills `qemu -daemonize` on macOS).
+  //
+  // posix_spawn() avoids this by starting a fresh process instead of cloning.
+  // POSIX_SPAWN_SETSID and the setup below just replicate what daemon(1, 0)
+  // does: detach from the terminal and send stdio to /dev/null.
+  //
+  // TLDR; we so fast macOS startup goes kaboom!!! and thinks there's something
+  // wrong so it kills of the process. ObjC code can't run before macOS does
+  // ... things :D
+  // Ty Apple for all the fish!! Hopefully this works :fingers_crossed:
+
+  // Since we're cloning we must stop the recursive startup and clone so we
+  // funny business with env vars.
+  if (getenv("NSLITE_DETACHED"))
+    return 0; /* we ARE the detached copy; this actually runs after the code
+  below *smiles in confusion* */
+
+  setenv("NSLITE_DETACHED", "1", 1);
+
+  char exe_path[PATH_MAX];
+  uint32_t exe_path_size = sizeof(exe_path);
+  if (_NSGetExecutablePath(exe_path, &exe_path_size) != 0) {
+    fprintf(stderr, "Failed to resolve executable path\n");
+    return 1;
+  }
+
+  posix_spawn_file_actions_t actions;
+  posix_spawn_file_actions_init(&actions);
+  posix_spawn_file_actions_addopen(
+    &actions, STDIN_FILENO, "/dev/null", O_RDONLY, 0);
+  posix_spawn_file_actions_addopen(
+    &actions, STDOUT_FILENO, "/dev/null", O_WRONLY, 0);
+  posix_spawn_file_actions_addopen(
+    &actions, STDERR_FILENO, "/dev/null", O_WRONLY, 0);
+
+  posix_spawnattr_t attr;
+  posix_spawnattr_init(&attr);
+  posix_spawnattr_setflags(
+    &attr, POSIX_SPAWN_SETSID); /* detach from controlling terminal */
+
+  pid_t pid;
+  int res = posix_spawn(&pid, exe_path, &actions, &attr, argv, environ);
+
+  posix_spawn_file_actions_destroy(&actions);
+  posix_spawnattr_destroy(&attr);
+
+  if (res != 0) {
+    fprintf(stderr, "posix_spawn: %s\n", strerror(res));
+    return 1;
+  }
+  _exit(0); /* parent exits, shell gets its prompt back */
 #else
-  // Disable warnings of deprecation for MacOS (been deprecated for 15 years as usual from Apple)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-  if (daemon(1, 0) < 0) { perror("daemon"); return 1; }
-#pragma GCC diagnostic pop
+  // daemon(3) detaches us from the controlling terminal; plain fork() is
+  // safe here since, unlike on macOS, no Objective-C runtime is involved.
+  (void) argc;
+  (void) argv;
+  if (daemon(1, 0) < 0) {
+    perror("daemon");
+    return 1;
+  }
   return 0;
 #endif
 }
@@ -78,7 +146,7 @@ static void init_window_icon(void) {
 
 
 int main(int argc, char **argv) {
-  if (detach_self() != 0) return 1;
+  if (detach_self(argc, argv) != 0) return 1;
 
   SDL_Init(SDL_INIT_VIDEO);
   SDL_EnableScreenSaver();
