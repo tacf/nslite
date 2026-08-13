@@ -23,9 +23,10 @@ extern char **environ;
 
 
 static int detach_self(int argc, char **argv) {
-#ifdef _WIN32
+  // TODO: i think we need to fix this to actually open a folder project
   (void) argc;
   (void) argv;
+#ifdef _WIN32
   if (GetEnvironmentVariableW(L"NSLITE_DETACHED", NULL, 0) != 0)
     return 0; /* we ARE the detached copy; carry on */
 
@@ -104,8 +105,6 @@ static int detach_self(int argc, char **argv) {
 #else
   // daemon(3) detaches us from the controlling terminal; plain fork() is
   // safe here since, unlike on macOS, no Objective-C runtime is involved.
-  (void) argc;
-  (void) argv;
   if (daemon(1, 0) < 0) {
     perror("daemon");
     return 1;
