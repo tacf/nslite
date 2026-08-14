@@ -25,6 +25,7 @@ function TreeView:new()
   self.visible = true
   self.init_size = true
   self.cache = {}
+  self.total_size = 0
 end
 
 
@@ -67,6 +68,7 @@ end
 function TreeView:each_item()
   return coroutine.wrap(function()
     self:check_cache()
+    local count = 0
     local ox, oy = self:get_content_offset()
     local y = oy + style.padding.y
     local w = self.size.x
@@ -79,6 +81,7 @@ function TreeView:each_item()
 
       coroutine.yield(cached, ox, y, w, h)
       y = y + h
+      count = count + 1
       i = i + 1
 
       if not cached.expanded then
@@ -95,7 +98,13 @@ function TreeView:each_item()
         end
       end
     end
+    self.total_size = style.padding.y + count * h
   end)
+end
+
+
+function TreeView:get_scrollable_size()
+  return self.total_size
 end
 
 

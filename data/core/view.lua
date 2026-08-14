@@ -43,6 +43,9 @@ function View:get_name()
 end
 
 
+-- Defines the scrollable size
+-- Needs to be ovewritten by any view that wants to control scrolling
+-- eg: TreeView plugin
 function View:get_scrollable_size()
   return math.huge
 end

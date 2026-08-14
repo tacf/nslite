@@ -29,6 +29,7 @@ if(NSLITE_USE_SYSTEM_LIBS)
     pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
     pkg_check_modules(PCRE2 REQUIRED IMPORTED_TARGET libpcre2-8)
     pkg_check_modules(LUA REQUIRED IMPORTED_TARGET lua>=5.5)
+    pkg_check_modules(GIT REQUIRED IMPORTED_TARGET libgit2)
     set(NSLITE_SDL_TARGET PkgConfig::SDL3)
     set(NSLITE_PCRE2_TARGET PkgConfig::PCRE2)
     set(NSLITE_LUA_TARGET PkgConfig::LUA)
@@ -87,6 +88,14 @@ else()
     elseif(WIN32)
         target_compile_definitions(lua PRIVATE LUA_USE_POPEN)
     endif()
+
+    FetchContent_Declare(
+        libgit
+        URL            https://github.com/libgit2/libgit2/archive/refs/tags/v1.9.6.tar.gz
+        URL_HASH       SHA256=57ccc32bbbd005cab75bcc52444052535af691789dba2b9016d5c50640d68b3d
+    )
+    
+    FetchContent_MakeAvailable(lua)
     
     set(NSLITE_SDL_TARGET SDL3::SDL3)
     set(NSLITE_PCRE2_TARGET pcre2-8-static)
