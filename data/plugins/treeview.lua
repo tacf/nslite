@@ -34,7 +34,9 @@ function TreeView:get_cached(item)
   if not t then
     t = {}
     t.filename = item.filename
-    t.abs_filename = system.absolute_path(item.filename)
+    -- resolve against the project, not the cwd; they differ whenever nsl is
+    -- launched from another directory
+    t.abs_filename = system.absolute_path(core.project_path(item.filename))
     t.name = t.filename:match("[^\\/]+$")
     t.depth = get_depth(t.filename)
     t.type = item.type
@@ -108,25 +110,36 @@ function TreeView:get_scrollable_size()
 end
 
 
-function TreeView:on_mouse_moved(px, py)
-  self.hovered_item = nil
+function TreeView:get_item_at(px, py)
   for item, x,y,w,h in self:each_item() do
     if px > x and py > y and px <= x + w and py <= y + h then
-      self.hovered_item = item
-      break
+      return item
     end
   end
 end
 
 
-function TreeView:on_mouse_pressed(button, x, y)
-  if not self.hovered_item then
+function TreeView:on_mouse_moved(px, py, ...)
+  TreeView.super.on_mouse_moved(self, px, py, ...)
+  self.hovered_item = self:get_item_at(px, py)
+end
+
+
+function TreeView:on_mouse_pressed(button, x, y, clicks)
+  if TreeView.super.on_mouse_pressed(self, button, x, y, clicks) then
+    return true -- started dragging the scrollbar
+  end
+  -- resolve from the click position rather than the cached hover, which goes
+  -- stale as soon as the view scrolls without the mouse moving
+  local item = self:get_item_at(x, y)
+  self.hovered_item = item
+  if not item then
     return
-  elseif self.hovered_item.type == "dir" then
-    self.hovered_item.expanded = not self.hovered_item.expanded
+  elseif item.type == "dir" then
+    item.expanded = not item.expanded
   else
     core.try(function()
-      core.open_file(self.hovered_item.filename)
+      core.open_file(item.filename)
     end)
   end
 end
@@ -145,6 +158,11 @@ function TreeView:update()
   end
 
   TreeView.super.update(self)
+
+  -- the wheel scrolls without a mouse move, so refresh the highlight against
+  -- the settled scroll position
+  local mouse = core.root_view.mouse
+  self.hovered_item = self:get_item_at(mouse.x, mouse.y)
 end
 
 
@@ -184,7 +202,10 @@ function TreeView:draw()
   local active_filename = doc and system.absolute_path(doc:get_filename() or "")
 
   for item, ix,y,w,h in self:each_item() do
-    local active = item.abs_filename == active_filename
+    -- both sides can be nil for an unresolvable path; nil == nil would mark
+    -- every such item active
+    local active = active_filename ~= nil
+      and item.abs_filename == active_filename
     local hovered = item == self.hovered_item
     local color = active and style.accent or style.text
     local x = ix
@@ -204,6 +225,8 @@ function TreeView:draw()
     x = x + spacing
     x = common.draw_text(style.font, color, item.name, nil, x, y, 0, h)
   end
+
+  self:draw_scrollbar()
 end
 
 

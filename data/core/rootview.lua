@@ -438,17 +438,9 @@ function Node:draw_tabs()
     local close_x = x + w - h
     local text_x = x + style.padding.x
     local text_w = math.max(0, w - h - style.padding.x * 2)
-    if style.font:get_width(text) > text_w then
-      local suffix = "..."
-      local available = text_w - style.font:get_width(suffix)
-      local cropped = text
-      while #cropped > 0 and style.font:get_width(cropped) > available do
-        cropped = cropped:sub(1, -2)
-      end
-      common.draw_text(style.font, color, cropped .. suffix, "left", text_x, y, text_w, h)
-    else
-      common.draw_text(style.font, color, text, "center", text_x, y, text_w, h)
-    end
+    local label, cropped = common.crop_text(style.font, text, text_w, "...")
+    common.draw_text(style.font, color, label,
+      cropped and "left" or "center", text_x, y, text_w, h)
     core.pop_clip_rect()
   end
   core.pop_clip_rect()

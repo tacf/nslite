@@ -22,14 +22,25 @@ extern char **environ;
 #endif
 
 
+/* Windows and macOS re-exec themselves and set this to mark the second copy.
+   Exporting it by hand keeps nsl attached to the shell on every platform. */
+static int skip_detach(void) {
+#ifdef _WIN32
+  return GetEnvironmentVariableW(L"NSLITE_DETACHED", NULL, 0) != 0;
+#else
+  return getenv("NSLITE_DETACHED") != NULL;
+#endif
+}
+
+
 static int detach_self(int argc, char **argv) {
   // TODO: i think we need to fix this to actually open a folder project
   (void) argc;
   (void) argv;
-#ifdef _WIN32
-  if (GetEnvironmentVariableW(L"NSLITE_DETACHED", NULL, 0) != 0)
-    return 0; /* we ARE the detached copy; carry on */
 
+  if (skip_detach()) return 0;
+
+#ifdef _WIN32
   SetEnvironmentVariableW(L"NSLITE_DETACHED", L"1");
 
   wchar_t *cmd =
@@ -61,12 +72,6 @@ static int detach_self(int argc, char **argv) {
   // wrong so it kills of the process. ObjC code can't run before macOS does
   // ... things :D
   // Ty Apple for all the fish!! Hopefully this works :fingers_crossed:
-
-  // Since we're cloning we must stop the recursive startup and clone so we
-  // funny business with env vars.
-  if (getenv("NSLITE_DETACHED"))
-    return 0; /* we ARE the detached copy; this actually runs after the code
-  below *smiles in confusion* */
 
   setenv("NSLITE_DETACHED", "1", 1);
 
@@ -104,7 +109,7 @@ static int detach_self(int argc, char **argv) {
   _exit(0); /* parent exits, shell gets its prompt back */
 #else
   // daemon(3) detaches us from the controlling terminal; plain fork() is
-  // safe here since, unlike on macOS, no Objective-C runtime is involved.
+  // safe here since, unlike on macOS(see above).
   if (daemon(1, 0) < 0) {
     perror("daemon");
     return 1;

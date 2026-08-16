@@ -5,11 +5,12 @@ int luaopen_system(lua_State *L);
 int luaopen_renderer(lua_State *L);
 int luaopen_document(lua_State *L);
 int luaopen_lsp(lua_State *L);
+int luaopen_git(lua_State *L);
 
 
 static const luaL_Reg libs[] = { { "system", luaopen_system },
   { "renderer", luaopen_renderer }, { "document", luaopen_document },
-  { "lsp", luaopen_lsp }, { NULL, NULL } };
+  { "lsp", luaopen_lsp }, { "git", luaopen_git }, { NULL, NULL } };
 
 void api_load_libs(lua_State *L) {
   for (int i = 0; libs[i].name; i++) {

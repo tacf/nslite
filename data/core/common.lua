@@ -144,6 +144,29 @@ function common.draw_rounded_rect(x, y, w, h, radius, color, corners)
 end
 
 
+-- length of text[1..n] with its last utf8 char removed
+local function drop_last_char(text, n)
+  while n > 0 and common.is_utf8_cont(text:sub(n, n)) do n = n - 1 end
+  return n - 1
+end
+
+
+-- fits text into max_w, appending suffix if it had to cut
+-- returns the text and whether it was cropped
+function common.crop_text(font, text, max_w, suffix)
+  if font:get_width(text) <= max_w then return text, false end
+  suffix = suffix or "…"
+  local available = max_w - font:get_width(suffix)
+  if available <= 0 then return "", true end
+  local n = #text
+  repeat
+    n = drop_last_char(text, n)
+  until n <= 0 or font:get_width(text:sub(1, n)) <= available
+  if n <= 0 then return suffix, true end
+  return text:sub(1, n) .. suffix, true
+end
+
+
 function common.draw_text(font, color, text, align, x,y,w,h)
   local tw, th = font:get_width(text), font:get_height(text)
   if align == "center" then

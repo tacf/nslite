@@ -33,6 +33,8 @@ if(NSLITE_USE_SYSTEM_LIBS)
     set(NSLITE_SDL_TARGET PkgConfig::SDL3)
     set(NSLITE_PCRE2_TARGET PkgConfig::PCRE2)
     set(NSLITE_LUA_TARGET PkgConfig::LUA)
+    set(NSLITE_GIT_TARGET PkgConfig::GIT)
+    set(NSLITE_GIT_INCLUDE_DIRS "")
 else()
     include(FetchContent)
     
@@ -89,17 +91,35 @@ else()
         target_compile_definitions(lua PRIVATE LUA_USE_POPEN)
     endif()
 
+    # we only read local repos, so drop the network transports and their deps
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+    set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(BUILD_CLI OFF CACHE BOOL "" FORCE)
+    set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(BUILD_FUZZERS OFF CACHE BOOL "" FORCE)
+    set(USE_SSH OFF CACHE STRING "" FORCE)
+    set(USE_HTTPS OFF CACHE STRING "" FORCE)
+    # otherwise libgit2 links whatever system PCRE2/PCRE it finds
+    set(REGEX_BACKEND "builtin" CACHE STRING "" FORCE)
+
     FetchContent_Declare(
         libgit
         URL            https://github.com/libgit2/libgit2/archive/refs/tags/v1.9.6.tar.gz
-        URL_HASH       SHA256=57ccc32bbbd005cab75bcc52444052535af691789dba2b9016d5c50640d68b3d
+        URL_HASH       SHA256=a88a42a4ea9bdab7aa8686eead3bf7d9c6dd74529caca16ab22eaa92433d31d9
     )
-    
-    FetchContent_MakeAvailable(lua)
-    
+
+    # libgit2 runs its feature probes without _GNU_SOURCE and then expects the
+    # glibc extensions they missed
+    set(_nsl_saved_req_defs ${CMAKE_REQUIRED_DEFINITIONS})
+    set(CMAKE_REQUIRED_DEFINITIONS ${CMAKE_REQUIRED_DEFINITIONS} -D_GNU_SOURCE)
+    FetchContent_MakeAvailable(libgit)
+    set(CMAKE_REQUIRED_DEFINITIONS ${_nsl_saved_req_defs})
+
     set(NSLITE_SDL_TARGET SDL3::SDL3)
     set(NSLITE_PCRE2_TARGET pcre2-8-static)
     set(NSLITE_LUA_TARGET lua)
+    set(NSLITE_GIT_TARGET libgit2package)
+    set(NSLITE_GIT_INCLUDE_DIRS ${libgit_SOURCE_DIR}/include)
 endif()
 
 set(NSLITE_IMAGE_SOURCES
@@ -134,6 +154,7 @@ set(NSLITE_SOURCES
     src/api/document.c
     src/api/syntax.c
     src/api/lsp.c
+    src/api/git.c
 )
 
 if(APPLE)
@@ -144,11 +165,16 @@ add_executable(nsl ${NSLITE_SOURCES})
 nslite_enable_strict_warnings(nsl)
 
 target_include_directories(nsl PRIVATE src)
+target_include_directories(nsl PRIVATE ${NSLITE_GIT_INCLUDE_DIRS})
+
+# hide libgit2's deprecated API so it cannot be used by accident
+target_compile_definitions(nsl PRIVATE GIT_DEPRECATE_HARD)
 
 target_link_libraries(nsl PRIVATE
     ${NSLITE_SDL_TARGET}
     ${NSLITE_LUA_TARGET}
     ${NSLITE_PCRE2_TARGET}
+    ${NSLITE_GIT_TARGET}
     nsl_image
     nsl_stb
     nsl_cjson
@@ -164,7 +190,9 @@ if(UNIX)
 endif()
 
 if(UNIX AND NOT APPLE)
-    target_compile_definitions(nsl PRIVATE LUA_USE_POSIX)
+    # _DEFAULT_SOURCE exposes daemon(3); glibc keys struct layouts off the
+    # feature macros, so it has to apply to every TU, not just main.c
+    target_compile_definitions(nsl PRIVATE LUA_USE_POSIX _DEFAULT_SOURCE)
 elseif(WIN32)
     target_compile_definitions(nsl PRIVATE LUA_USE_POPEN)
 endif()
