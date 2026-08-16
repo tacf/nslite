@@ -18,14 +18,12 @@ function Tree:consume(node)
     for k, v in pairs(node) do self[k] = v end
 end
 
-function Tree:add_child(node, pos)
+function Tree:add_child(child, pos)
     local nodes = self.nodes or {}
-    assert(pos == (#nodes + 1),
-    string.format("Tried to add out of order (pos: %d | curr size: %d)", pos, #nodes))
-    assert(nodes[pos] == nil, string.format("Tried to add to non empty node (%d)", pos))
-    local child = Tree()
-    child:consume(node)
-    nodes[pos] = child
+    pos = pos or (#nodes + 1)
+    assert(pos >= 1 and pos <= #nodes + 1,
+        string.format("Tried to add out of range (pos: %d | curr size: %d)", pos, #nodes))
+    table.insert(nodes, pos, child)
     self.nodes = nodes
     return child
 end

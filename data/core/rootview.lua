@@ -92,13 +92,12 @@ function Node:split(dir, view, locked)
     other.locked = locked
     core.set_active_view(last_active)
   end
-  self.nodes = {}
   if dir == "up" or dir == "left" then
-    self.nodes[Node.LEFT] = other
-    self.nodes[Node.RIGHT] = child
+    self:add_child(other)
+    self:add_child(child)
   else
-    self.nodes[Node.LEFT] = child
-    self.nodes[Node.RIGHT] = other
+    self:add_child(child)
+    self:add_child(other)
   end
   return child
 end
@@ -108,7 +107,7 @@ function Node:close_view(root, view)
     local idx = self:get_view_idx(view)
     if not idx then return end
     if #self.nodes > 1 then
-      table.remove(self.nodes, idx)
+      self:del_child(idx)
       if view == self.active_view then
         self:set_active_view(self.nodes[idx] or self.nodes[#self.nodes])
       else
@@ -144,9 +143,9 @@ function Node:add_view(view)
   assert(self.type == "leaf", "Tried to add view to non-leaf node")
   assert(not self.locked, "Tried to add view to locked node")
   if self.nodes[1] and self.nodes[1]:is(EmptyView) then
-    table.remove(self.nodes)
+    self:del_child(1)
   end
-  table.insert(self.nodes, view)
+  self:add_child(view)
   self:set_active_view(view)
 end
 

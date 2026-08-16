@@ -31,8 +31,8 @@ local t = {
     local node = core.root_view:get_active_node()
     local idx = node:get_view_idx(core.active_view)
     if idx > 1 then
-      table.remove(node.nodes, idx)
-      table.insert(node.nodes, idx - 1, core.active_view)
+      node:del_child(idx)
+      node:add_child(core.active_view, idx - 1)
       node:scroll_tab_into_view(core.active_view)
     end
   end,
@@ -41,8 +41,8 @@ local t = {
     local node = core.root_view:get_active_node()
     local idx = node:get_view_idx(core.active_view)
     if idx < #node.nodes then
-      table.remove(node.nodes, idx)
-      table.insert(node.nodes, idx + 1, core.active_view)
+      node:del_child(idx)
+      node:add_child(core.active_view, idx + 1)
       node:scroll_tab_into_view(core.active_view)
     end
   end,
