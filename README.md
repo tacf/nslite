@@ -6,6 +6,7 @@ Text editor based on [rxi/lite](https://github.com/rxi/lite).
 - SDL3 is used as the main rendering library.
 - stb_truetype is used for font loading
 - stb_image and nanosvg are used for image loading
+- libgit2 for git support
 - Lua 5.5 is the base Lua version.
 
 Features:
@@ -108,14 +109,13 @@ The bundled [Nonicons](https://github.com/yamatsum/nonicons) font is also
 MIT-licensed; its copyright notice and license are included in
 [`data/fonts/nonicons.LICENSE.txt`](data/fonts/nonicons.LICENSE.txt).
 
-
 ## Motivation & Credits
 
-This project is heavily influenced by some bigger ones, namely, 
-[Pragtical](https://github.com/pragtical/) and 
+This project is heavily influenced by some bigger ones, namely,
+[Pragtical](https://github.com/pragtical/) and
 [Lite-XL](https://github.com/lite-xl/lite-xl). The biggest motivator being,
-[fred - FRiendly EDitor](https://fred-dev.tech/). Which made me want to do 
-things a bit differently than the other derivatives, in particular, move 
+[fred - FRiendly EDitor](https://fred-dev.tech/). Which made me want to do
+things a bit differently than the other derivatives, in particular, move
 some of the heavy lifting into the C side in order to implement some of the
 more advanced and performant technics for text handling while preserving the
 flexible aspect of using Lua as a configuration and _rendering definition_.

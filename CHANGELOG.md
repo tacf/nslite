@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.6.2/3
+## v1.6.2
 
 ### Fixed
 
