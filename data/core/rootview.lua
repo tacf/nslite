@@ -441,6 +441,10 @@ function Node:draw_tabs()
     local label, cropped = common.crop_text(style.font, text, text_w, "...")
     common.draw_text(style.font, color, label,
       cropped and "left" or "center", text_x, y, text_w, h)
+    if is_active or i == self.hovered_tab then
+      local close_color = i == self.hovered_tab_close and style.accent or color
+      common.draw_text(style.icon_font, close_color, "x", "center", close_x, y, h, h)
+    end
     core.pop_clip_rect()
   end
   core.pop_clip_rect()

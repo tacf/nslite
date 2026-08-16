@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.6.2/3
+
+### Fixed
+
+- Second and third time is the charm, build fixed!
+- Regression: missing tab close button (most likely from 1.5.x)
+
 ## v1.6.1
 
 ### Fixed
