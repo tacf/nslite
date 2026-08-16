@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.6.1
+
+### Fixed
+
+- Click detection in tree view introduced in 1.5.2, and clearly not fixed by 1.6.0
+- Fix build? For real this time?! I can't cMake !
+
 ## v1.6.0
 
 ### Added

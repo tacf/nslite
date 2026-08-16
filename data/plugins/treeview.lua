@@ -201,29 +201,35 @@ function TreeView:draw()
   local doc = core.active_view.doc
   local active_filename = doc and system.absolute_path(doc:get_filename() or "")
 
+  local top, bottom = self.position.y, self.position.y + self.size.y
+
   for item, ix,y,w,h in self:each_item() do
-    -- both sides can be nil for an unresolvable path; nil == nil would mark
-    -- every such item active
-    local active = active_filename ~= nil
-      and item.abs_filename == active_filename
-    local hovered = item == self.hovered_item
-    local color = active and style.accent or style.text
-    local x = ix
+    -- the iterator must run to completion to keep total_size right, but there
+    -- is no point drawing rows outside the viewport
+    if y + h >= top and y < bottom then
+      -- both sides can be nil for an unresolvable path; nil == nil would mark
+      -- every such item active
+      local active = active_filename ~= nil
+        and item.abs_filename == active_filename
+      local hovered = item == self.hovered_item
+      local color = active and style.accent or style.text
+      local x = ix
 
-    -- hovered item background
-    if hovered then
-      renderer.draw_rect(x, y, w, h, style.line_highlight)
-      color = style.accent
+      -- hovered item background
+      if hovered then
+        renderer.draw_rect(x, y, w, h, style.line_highlight)
+        color = style.accent
+      end
+
+      -- icons
+      x = x + item.depth * style.padding.x + style.padding.x
+      x = x + self:draw_item_chevron(item, active, hovered, x, y, w, h)
+      x = x + self:draw_item_icon(item, active, hovered, x, y, w, h)
+
+      -- text
+      x = x + spacing
+      x = common.draw_text(style.font, color, item.name, nil, x, y, 0, h)
     end
-
-    -- icons
-    x = x + item.depth * style.padding.x + style.padding.x
-    x = x + self:draw_item_chevron(item, active, hovered, x, y, w, h)
-    x = x + self:draw_item_icon(item, active, hovered, x, y, w, h)
-
-    -- text
-    x = x + spacing
-    x = common.draw_text(style.font, color, item.name, nil, x, y, 0, h)
   end
 
   self:draw_scrollbar()

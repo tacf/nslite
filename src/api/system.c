@@ -37,17 +37,14 @@ static char *key_name(
 static int f_poll_event(lua_State *L) {
   char buf[16];
   SDL_Event e;
-  double scale = window_get_scale(window);
+  // events arrive in window points; the framebuffer is pixels
+  double scale = window_get_pixel_density(window);
 
   while (SDL_PollEvent(&e)) {
     switch (e.type) {
-    case SDL_EVENT_QUIT:
-      lua_pushstring(L, "quit");
-      return 1;
+    case SDL_EVENT_QUIT: lua_pushstring(L, "quit"); return 1;
 
-    case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-      lua_pushstring(L, "quit");
-      return 1;
+    case SDL_EVENT_WINDOW_CLOSE_REQUESTED: lua_pushstring(L, "quit"); return 1;
 
     case SDL_EVENT_WINDOW_RESIZED:
       lua_pushstring(L, "resized");
@@ -163,9 +160,8 @@ static int f_set_cursor(lua_State *L) {
 
 static const char *modifier_opts[] = { "ctrl", "shift", "alt", "cmd", NULL };
 
-static const SDL_Keymod modifier_masks[] = {
-  SDL_KMOD_CTRL, SDL_KMOD_SHIFT, SDL_KMOD_ALT, SDL_KMOD_GUI
-};
+static const SDL_Keymod modifier_masks[] = { SDL_KMOD_CTRL, SDL_KMOD_SHIFT,
+  SDL_KMOD_ALT, SDL_KMOD_GUI };
 
 static int f_key_modifier_down(lua_State *L) {
   int opt = luaL_checkoption(L, 1, NULL, modifier_opts);
