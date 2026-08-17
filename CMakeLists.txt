@@ -38,18 +38,33 @@ if(NSLITE_USE_SYSTEM_LIBS)
     set(NSLITE_GIT_INCLUDE_DIRS "")
 else()
     include(FetchContent)
-    
+
     FetchContent_Declare(
         SDL3
         GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
         GIT_TAG        main
         GIT_SHALLOW    TRUE
     )
-    
-    set(SDL_SHARED ON CACHE BOOL "" FORCE)
-    set(SDL_STATIC OFF CACHE BOOL "" FORCE)
+
+    set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+    set(SDL_STATIC ON CACHE BOOL "" FORCE)
+    set(SDL_LEAN_AND_MEAN ON CACHE BOOL "" FORCE)
     set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
-    
+
+    set(SDL_AUDIO OFF CACHE BOOL "" FORCE)
+    set(SDL_RENDER OFF CACHE BOOL "" FORCE)
+    set(SDL_GPU OFF CACHE BOOL "" FORCE)
+    set(SDL_CAMERA OFF CACHE BOOL "" FORCE)
+    set(SDL_JOYSTICK OFF CACHE BOOL "" FORCE)
+    set(SDL_HAPTIC OFF CACHE BOOL "" FORCE)
+    set(SDL_HIDAPI OFF CACHE BOOL "" FORCE)
+    set(SDL_SENSOR OFF CACHE BOOL "" FORCE)
+    set(SDL_OPENGL OFF CACHE BOOL "" FORCE)
+    set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
+    set(SDL_VULKAN OFF CACHE BOOL "" FORCE)
+    set(SDL_DBUS OFF CACHE BOOL "" FORCE)
+    set(SDL_LIBUDEV OFF CACHE BOOL "" FORCE)
+
     FetchContent_MakeAvailable(SDL3)
 
     set(BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
@@ -60,32 +75,32 @@ else()
     set(PCRE2_BUILD_TESTS OFF CACHE BOOL "" FORCE)
     set(PCRE2_SUPPORT_JIT OFF CACHE BOOL "" FORCE)
     set(PCRE2_SHOW_REPORT OFF CACHE BOOL "" FORCE)
-    
+
     FetchContent_Declare(
         PCRE2
         GIT_REPOSITORY https://github.com/PCRE2Project/pcre2.git
         GIT_TAG        pcre2-10.47
         GIT_SHALLOW    TRUE
     )
-    
+
     FetchContent_MakeAvailable(PCRE2)
-    
+
     FetchContent_Declare(
         lua
         URL            https://www.lua.org/ftp/lua-5.5.0.tar.gz
         URL_HASH       SHA256=57ccc32bbbd005cab75bcc52444052535af691789dba2b9016d5c50640d68b3d
     )
-    
+
     FetchContent_MakeAvailable(lua)
-    
+
     file(GLOB LUA_SOURCES ${lua_SOURCE_DIR}/src/*.c)
     list(FILTER LUA_SOURCES EXCLUDE REGEX "lua\\.c$")
     list(FILTER LUA_SOURCES EXCLUDE REGEX "luac\\.c$")
-    
+
     add_library(lua STATIC ${LUA_SOURCES})
     target_include_directories(lua PUBLIC ${lua_SOURCE_DIR}/src)
     set_target_properties(lua PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    
+
     if(UNIX AND NOT APPLE)
         target_compile_definitions(lua PRIVATE LUA_USE_POSIX)
     elseif(WIN32)
