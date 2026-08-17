@@ -4,12 +4,12 @@ local command = require "core.command"
 local config = require "core.config"
 local style = require "core.style"
 local DocView = require "core.docview"
-local LogView = require "core.logview"
+local LogView = require "core.presentations.log"
 local ImageView = require "core.presentations.image"
 local View = require "core.view"
 
 
-local StatusView = View:extend()
+local StatusView      = View:extend()
 
 StatusView.separator  = "      "
 StatusView.separator2 = "   |   "
@@ -21,15 +21,13 @@ function StatusView:new()
   self.message = {}
 end
 
-
 function StatusView:on_mouse_pressed()
   core.set_active_view(core.last_active_view)
   if system.get_time() < self.message_timeout
-  and not core.active_view:is(LogView) then
+      and not core.active_view:is(LogView) then
     command.perform "core:open-log"
   end
 end
-
 
 function StatusView:show_message(icon, icon_color, text)
   self.message = {
@@ -38,7 +36,6 @@ function StatusView:show_message(icon, icon_color, text)
   }
   self.message_timeout = system.get_time() + config.message_timeout
 end
-
 
 function StatusView:update()
   self.size.y = style.font:get_height() + style.padding.y * 2
@@ -51,7 +48,6 @@ function StatusView:update()
 
   StatusView.super.update(self)
 end
-
 
 local function draw_items(self, items, x, y, draw_fn)
   local font = style.font
@@ -88,7 +84,6 @@ function StatusView:draw_items(items, right_align, yoffset)
     draw_items(self, items, x, y, common.draw_text)
   end
 end
-
 
 local function get_active_docview()
   local view = core.active_view
@@ -160,7 +155,6 @@ function StatusView:get_items()
   }
 end
 
-
 function StatusView:draw()
   self:draw_background(style.background2)
 
@@ -172,6 +166,5 @@ function StatusView:draw()
   self:draw_items(left)
   self:draw_items(right, true)
 end
-
 
 return StatusView
