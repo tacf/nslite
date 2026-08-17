@@ -41,8 +41,8 @@ static int f_get_height(lua_State *L) {
 
 
 static int f_new_from_rgba(lua_State *L) {
-  int width = luaL_checkinteger(L, 1);
-  int height = luaL_checkinteger(L, 2);
+  int width = (int) luaL_checkinteger(L, 1);
+  int height = (int) luaL_checkinteger(L, 2);
   size_t data_len;
   const char *data = luaL_checklstring(L, 3, &data_len);
   RenImage **self = lua_newuserdata(L, sizeof(*self));

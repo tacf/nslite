@@ -201,6 +201,12 @@ target_link_libraries(nsl PRIVATE
 if(APPLE)
     find_library(APPKIT_FRAMEWORK AppKit REQUIRED)
     target_link_libraries(nsl PRIVATE ${APPKIT_FRAMEWORK})
+
+    # SDL_cocoamouse.m always references GCMouse, but SDL only links
+    # GameController when SDL_JOYSTICK is on, which we disable.
+    # So enjoyable to support cross OS builds :'D
+    find_library(GAMECONTROLLER_FRAMEWORK GameController REQUIRED)
+    target_link_libraries(nsl PRIVATE ${GAMECONTROLLER_FRAMEWORK})
 endif()
 
 if(UNIX)
