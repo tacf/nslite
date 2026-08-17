@@ -96,6 +96,7 @@ jobs:
         with:
           name: nslite-${{ matrix.name }}
           path: ${{ matrix.archive }}
+          archive: false
           if-no-files-found: error
 
   verify-tag-on-main:
