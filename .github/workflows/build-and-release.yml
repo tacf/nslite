@@ -21,13 +21,10 @@ jobs:
         include:
           - name: linux
             os: ubuntu-latest
-            archive: nslite-linux.tar.gz
           - name: macos
             os: macos-latest
-            archive: nslite-macos.tar.gz
           - name: windows
             os: windows-latest
-            archive: nslite-windows.zip
 
     steps:
       - uses: actions/checkout@v6
@@ -65,7 +62,6 @@ jobs:
           mkdir -p "$app_dir"
           cp build/nsl "$app_dir/"
           cp -a data "$app_dir/data"
-          tar -C dist -czf nslite-linux.tar.gz nslite-linux
 
       - name: Package macOS artifact
         if: matrix.name == 'macos'
@@ -77,7 +73,6 @@ jobs:
           test -n "$binary"
           cp "$binary" "$app_dir/nsl"
           cp -R data "$app_dir/data"
-          tar -C dist -czf nslite-macos.tar.gz nslite-macos
 
       - name: Package Windows artifact
         if: matrix.name == 'windows'
@@ -89,14 +84,12 @@ jobs:
           if (-not $binary) { throw 'Built executable was not found.' }
           Copy-Item $binary.FullName $appDir
           Copy-Item -Recurse data "$appDir/data"
-          Compress-Archive -Path "$appDir/*" -DestinationPath nslite-windows.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
           name: nslite-${{ matrix.name }}
-          path: ${{ matrix.archive }}
-          archive: false
+          path: dist/nslite-${{ matrix.name }}
           if-no-files-found: error
 
   verify-tag-on-main:
@@ -133,20 +126,23 @@ jobs:
         uses: actions/download-artifact@v5
         with:
           pattern: nslite-*
-          merge-multiple: true
           path: release-assets
 
-      - name: Add version to asset names
+      - name: Create release archives
         env:
           TAG: ${{ needs.verify-tag-on-main.outputs.tag }}
         run: |
-          mv release-assets/nslite-linux.tar.gz "release-assets/nslite-${TAG}-linux.tar.gz"
-          mv release-assets/nslite-macos.tar.gz "release-assets/nslite-${TAG}-macos.tar.gz"
-          mv release-assets/nslite-windows.zip "release-assets/nslite-${TAG}-windows.zip"
+          mkdir -p dist
+          # artifacts travel as zips, which carry no unix permissions, so the
+          # executable bit has to be put back before we repack for release
+          chmod +x release-assets/nslite-linux/nsl release-assets/nslite-macos/nsl
+          tar -C release-assets -czf "dist/nslite-${TAG}-linux.tar.gz" nslite-linux
+          tar -C release-assets -czf "dist/nslite-${TAG}-macos.tar.gz" nslite-macos
+          (cd release-assets && zip -qr "../dist/nslite-${TAG}-windows.zip" nslite-windows)
 
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ needs.verify-tag-on-main.outputs.tag }}
-        run: gh release create "$TAG" release-assets/* --title "$TAG" --generate-notes
+        run: gh release create "$TAG" dist/* --title "$TAG" --generate-notes
