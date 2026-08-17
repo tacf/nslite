@@ -104,6 +104,7 @@ keymap.add {
   ["mod+o"] = "core:open-file",
   ["mod+n"] = "core:new-doc",
   ["alt+return"] = "core:toggle-fullscreen",
+  ["f12"] = "core:toggle-debug",
 
   ["alt+shift+j"] = "root:split-left",
   ["alt+shift+l"] = "root:split-right",
