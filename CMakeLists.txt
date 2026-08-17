@@ -59,7 +59,9 @@ else()
     set(SDL_HAPTIC OFF CACHE BOOL "" FORCE)
     set(SDL_HIDAPI OFF CACHE BOOL "" FORCE)
     set(SDL_SENSOR OFF CACHE BOOL "" FORCE)
-    set(SDL_OPENGL OFF CACHE BOOL "" FORCE)
+    # Only to compile in X11's visual selection; without GLX it forces the
+    # default depth-24 visual (XRGB8888, no alpha). Rendering stays software.
+    set(SDL_OPENGL ON CACHE BOOL "" FORCE)
     set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
     set(SDL_VULKAN OFF CACHE BOOL "" FORCE)
     set(SDL_DBUS OFF CACHE BOOL "" FORCE)

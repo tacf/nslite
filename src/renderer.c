@@ -113,6 +113,17 @@ static void convert_rgba_to_ren_colors(RenColor *pixels, size_t count) {
 }
 
 
+RenImage *ren_new_image_from_rgba(
+  int width, int height, const void *data, size_t data_len) {
+  size_t expected = (size_t) width * (size_t) height * 4;
+  if (data_len < expected) { return NULL; }
+  RenImage *image = ren_new_image(width, height);
+  memcpy(image->pixels, data, expected);
+  convert_rgba_to_ren_colors(image->pixels, (size_t) width * (size_t) height);
+  return image;
+}
+
+
 static bool valid_image_size(int width, int height) {
   if (width <= 0 || height <= 0) { return false; }
   size_t maximum_pixels = (SIZE_MAX - sizeof(RenImage)) / sizeof(RenColor);
@@ -127,8 +138,8 @@ static RenImage *load_raster_image(const uint8_t *data, size_t size) {
   }
 
   int width, height, channels;
-  stbi_uc *rgba = stbi_load_from_memory(data, (int) size, &width, &height,
-    &channels, STBI_rgb_alpha);
+  stbi_uc *rgba = stbi_load_from_memory(
+    data, (int) size, &width, &height, &channels, STBI_rgb_alpha);
   if (!rgba) {
     SDL_SetError("unsupported or invalid image: %s", stbi_failure_reason());
     return NULL;
@@ -151,8 +162,8 @@ static RenImage *load_raster_image(const uint8_t *data, size_t size) {
 static RenImage *load_svg_image(char *data) {
   NSVGimage *svg = nsvgParse(data, "px", 96.0f);
   if (!svg || svg->width <= 0 || svg->height <= 0
-      || (double) svg->width > (double) INT_MAX
-      || (double) svg->height > (double) INT_MAX) {
+    || (double) svg->width > (double) INT_MAX
+    || (double) svg->height > (double) INT_MAX) {
     nsvgDelete(svg);
     SDL_SetError("unsupported or invalid SVG image");
     return NULL;
@@ -173,8 +184,8 @@ static RenImage *load_svg_image(char *data) {
   }
 
   RenImage *image = ren_new_image(width, height);
-  nsvgRasterize(rasterizer, svg, 0, 0, 1, (uint8_t *) image->pixels,
-    width, height, width * (int) sizeof(RenColor));
+  nsvgRasterize(rasterizer, svg, 0, 0, 1, (uint8_t *) image->pixels, width,
+    height, width * (int) sizeof(RenColor));
   nsvgDeleteRasterizer(rasterizer);
   nsvgDelete(svg);
   convert_rgba_to_ren_colors(image->pixels, (size_t) width * (size_t) height);
@@ -193,9 +204,8 @@ RenImage *ren_load_image(const char *filename) {
   uint8_t *data = SDL_LoadFile(filename, &size);
   if (!data) { return NULL; }
 
-  RenImage *image = has_svg_extension(filename)
-    ? load_svg_image((char *) data)
-    : load_raster_image(data, size);
+  RenImage *image = has_svg_extension(filename) ? load_svg_image((char *) data)
+                                                : load_raster_image(data, size);
   SDL_free(data);
   return image;
 }
@@ -391,6 +401,23 @@ void ren_draw_rect(RenRect rect, RenColor color) {
   }
 }
 
+void ren_fill_rect(RenRect rect, RenColor color) {
+  int x1 = rect.x < clip.left ? clip.left : rect.x;
+  int y1 = rect.y < clip.top ? clip.top : rect.y;
+  int x2 = rect.x + rect.width;
+  int y2 = rect.y + rect.height;
+  x2 = x2 > clip.right ? clip.right : x2;
+  y2 = y2 > clip.bottom ? clip.bottom : y2;
+  if (x1 >= x2 || y1 >= y2) { return; }
+
+  SDL_Surface *surf = SDL_GetWindowSurface(window);
+  RenColor *d = (RenColor *) surf->pixels;
+  d += x1 + y1 * surf->w;
+  int dr = surf->w - (x2 - x1);
+
+  rect_draw_loop(color);
+}
+
 
 void ren_draw_image(
   RenImage *image, RenRect *sub, int x, int y, RenColor color) {
@@ -451,11 +478,11 @@ void ren_draw_image_scaled(RenImage *image, RenRect rect) {
   int destination_skip = surface->w - (x2 - x1);
 
   for (int y = y1; y < y2; y++) {
-    int source_y = (int) (((int64_t) (y - rect.y) * image->height)
-      / rect.height);
+    int source_y =
+      (int) (((int64_t) (y - rect.y) * image->height) / rect.height);
     for (int x = x1; x < x2; x++) {
-      int source_x = (int) (((int64_t) (x - rect.x) * image->width)
-        / rect.width);
+      int source_x =
+        (int) (((int64_t) (x - rect.x) * image->width) / rect.width);
       RenColor source = image->pixels[source_x + source_y * image->width];
       *destination = blend_pixel(*destination, source);
       destination++;

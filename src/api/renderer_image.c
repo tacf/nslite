@@ -40,11 +40,27 @@ static int f_get_height(lua_State *L) {
 }
 
 
+static int f_new_from_rgba(lua_State *L) {
+  int width = luaL_checkinteger(L, 1);
+  int height = luaL_checkinteger(L, 2);
+  size_t data_len;
+  const char *data = luaL_checklstring(L, 3, &data_len);
+  RenImage **self = lua_newuserdata(L, sizeof(*self));
+  luaL_setmetatable(L, API_TYPE_IMAGE);
+  *self = ren_new_image_from_rgba(width, height, data, data_len);
+  if (!*self) {
+    return luaL_error(L, "invalid image data for %dx%d", width, height);
+  }
+  return 1;
+}
+
+
 static const luaL_Reg lib[] = {
-  { "__gc",       f_gc         },
-  { "load",       f_load       },
-  { "get_width",  f_get_width  },
-  { "get_height", f_get_height },
+  { "__gc",         f_gc           },
+  { "load",         f_load         },
+  { "new_from_rgba", f_new_from_rgba },
+  { "get_width",    f_get_width    },
+  { "get_height",   f_get_height   },
   { NULL, NULL }
 };
 

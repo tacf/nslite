@@ -112,6 +112,13 @@ function core.init()
   core.find_view = FindView()
   core.status_view = StatusView()
 
+  -- apply borderless window when using own title bar
+  if not config.native_title_bar then
+    local th = style.font:get_height() + style.padding.y * 2
+    local bm = 30 * 3 + style.padding.x
+    system.configure_titlebar(th, bm)
+  end
+
   core.root_view.root_node:split("down", core.status_view, true)
   core.root_view:add_floating_view(core.command_view)
   core.root_view:add_floating_view(core.find_view)
@@ -428,6 +435,9 @@ function core.step()
   if title ~= core.window_title then
     system.set_window_title(title)
     core.window_title = title
+    if core.root_view.titlebar then
+      core.root_view.titlebar:set_title(title)
+    end
   end
 
   -- draw

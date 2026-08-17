@@ -33,12 +33,12 @@ static char *key_name(
   return destination;
 }
 
-
 static int f_poll_event(lua_State *L) {
   char buf[16];
   SDL_Event e;
   // events arrive in window points; the framebuffer is pixels
   double scale = window_get_pixel_density(window);
+  int shadow = rencache_get_shadow();
 
   while (SDL_PollEvent(&e)) {
     switch (e.type) {
@@ -48,8 +48,8 @@ static int f_poll_event(lua_State *L) {
 
     case SDL_EVENT_WINDOW_RESIZED:
       lua_pushstring(L, "resized");
-      lua_pushnumber(L, e.window.data1 * scale);
-      lua_pushnumber(L, e.window.data2 * scale);
+      lua_pushnumber(L, (e.window.data1 - shadow * 2) * scale);
+      lua_pushnumber(L, (e.window.data2 - shadow * 2) * scale);
       return 3;
 
     case SDL_EVENT_WINDOW_EXPOSED:
@@ -64,8 +64,8 @@ static int f_poll_event(lua_State *L) {
     case SDL_EVENT_DROP_FILE:
       lua_pushstring(L, "filedropped");
       lua_pushstring(L, e.drop.data);
-      lua_pushnumber(L, e.drop.x * scale);
-      lua_pushnumber(L, e.drop.y * scale);
+      lua_pushnumber(L, (e.drop.x - shadow) * scale);
+      lua_pushnumber(L, (e.drop.y - shadow) * scale);
       return 4;
 
     case SDL_EVENT_KEY_DOWN:
@@ -87,8 +87,8 @@ static int f_poll_event(lua_State *L) {
       if (e.button.button == 1) { SDL_CaptureMouse(true); }
       lua_pushstring(L, "mousepressed");
       lua_pushstring(L, button_name(e.button.button));
-      lua_pushnumber(L, e.button.x * scale);
-      lua_pushnumber(L, e.button.y * scale);
+      lua_pushnumber(L, (e.button.x - shadow) * scale);
+      lua_pushnumber(L, (e.button.y - shadow) * scale);
       lua_pushnumber(L, e.button.clicks);
       return 5;
 
@@ -96,14 +96,14 @@ static int f_poll_event(lua_State *L) {
       if (e.button.button == 1) { SDL_CaptureMouse(false); }
       lua_pushstring(L, "mousereleased");
       lua_pushstring(L, button_name(e.button.button));
-      lua_pushnumber(L, e.button.x * scale);
-      lua_pushnumber(L, e.button.y * scale);
+      lua_pushnumber(L, (e.button.x - shadow) * scale);
+      lua_pushnumber(L, (e.button.y - shadow) * scale);
       return 4;
 
     case SDL_EVENT_MOUSE_MOTION:
       lua_pushstring(L, "mousemoved");
-      lua_pushnumber(L, e.motion.x * scale);
-      lua_pushnumber(L, e.motion.y * scale);
+      lua_pushnumber(L, (e.motion.x - shadow) * scale);
+      lua_pushnumber(L, (e.motion.y - shadow) * scale);
       lua_pushnumber(L, e.motion.xrel * scale);
       lua_pushnumber(L, e.motion.yrel * scale);
       return 5;
@@ -182,9 +182,82 @@ enum { WIN_NORMAL, WIN_MAXIMIZED, WIN_FULLSCREEN };
 
 static int f_set_window_mode(lua_State *L) {
   int n = luaL_checkoption(L, 1, "normal", window_opts);
-  SDL_SetWindowFullscreen(window, n == WIN_FULLSCREEN);
-  if (n == WIN_NORMAL) { SDL_RestoreWindow(window); }
-  if (n == WIN_MAXIMIZED) { SDL_MaximizeWindow(window); }
+  if (n == WIN_FULLSCREEN) {
+    SDL_SetWindowFullscreen(window, true);
+  } else if (n == WIN_NORMAL) {
+    SDL_RestoreWindow(window);
+  } else if (n == WIN_MAXIMIZED) {
+    SDL_MaximizeWindow(window);
+  }
+  return 0;
+}
+
+
+static int f_minimize_window(lua_State *L) {
+  (void) L;
+  SDL_MinimizeWindow(window);
+  return 0;
+}
+
+
+static int g_titlebar_height = 0;
+static int g_titlebar_drag_margin = 0;
+
+#define SHADOW_PX 8
+
+static SDL_HitTestResult SDLCALL hit_test_cb(
+  SDL_Window *win, const SDL_Point *point, void *data) {
+  (void) data;
+  if (g_titlebar_height > 0) {
+    int inset = rencache_get_shadow();
+    int top = inset;
+    int bottom = inset + g_titlebar_height;
+    int left = inset;
+    int w;
+    SDL_GetWindowSize(win, &w, NULL);
+    int right = w - inset - g_titlebar_drag_margin;
+    if (point->y >= top && point->y < bottom && point->x >= left
+      && point->x < right) {
+      return SDL_HITTEST_DRAGGABLE;
+    }
+  }
+  return SDL_HITTEST_NORMAL;
+}
+
+/* configure_titlebar(height, button_margin):
+ *   height > 0  → enable custom titlebar (borderless, shadow, hit test)
+ *   height == 0 → disable custom titlebar (bordered, no shadow, no hit test)
+ */
+static int f_configure_titlebar(lua_State *L) {
+  int height = (int) luaL_checknumber(L, 1);
+  int margin = (int) luaL_checknumber(L, 2);
+
+  int old_shadow = rencache_get_shadow();
+  int new_shadow = height > 0 ? SHADOW_PX : 0;
+
+  g_titlebar_height = height;
+  g_titlebar_drag_margin = margin;
+
+  rencache_set_shadow(new_shadow);
+
+  /* borderless mode */
+  SDL_SetWindowBordered(window, height == 0);
+
+  /* hit test */
+  if (height > 0) {
+    SDL_SetWindowHitTest(window, hit_test_cb, NULL);
+  } else {
+    SDL_SetWindowHitTest(window, NULL, NULL);
+  }
+
+  /* resize window for shadow padding */
+  if (old_shadow != new_shadow) {
+    int w, h;
+    SDL_GetWindowSize(window, &w, &h);
+    SDL_SetWindowSize(window, w + (new_shadow - old_shadow) * 2,
+      h + (new_shadow - old_shadow) * 2);
+  }
+
   return 0;
 }
 
@@ -395,6 +468,8 @@ static const luaL_Reg lib[] = { { "poll_event", f_poll_event },
   { "key_modifier_down", f_key_modifier_down },
   { "set_window_title", f_set_window_title },
   { "set_window_mode", f_set_window_mode },
+  { "minimize_window", f_minimize_window },
+  { "configure_titlebar", f_configure_titlebar },
   { "window_has_focus", f_window_has_focus },
   { "show_error_dialog", f_show_error_dialog },
   { "show_confirm_dialog", f_show_confirm_dialog }, { "list_dir", f_list_dir },

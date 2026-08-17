@@ -1,10 +1,12 @@
 local core = require "core"
 local common = require "core.common"
 local style = require "core.style"
+local config = require "core.config"
 local Tree = require "core.utils.tree"
 local View = require "core.view"
 local DocView = require "core.docview"
 local EmptyView = require "core.presentations.empty"
+local TitleBarView = require "core.presentations.titlebar"
 
 local Node = Tree:extend()
 
@@ -407,6 +409,9 @@ function RootView:new()
   self.deferred_draws = {}
   self.floating_views = {}
   self.mouse = { x = 0, y = 0 }
+  if not config.native_title_bar then
+    self.titlebar = TitleBarView()
+  end
 end
 
 function RootView:defer_draw(fn, ...)
@@ -478,6 +483,13 @@ function RootView:on_mouse_pressed(button, x, y, clicks)
     return
   end
 
+  -- capture titlebar mouse input (for handling events when using engine
+  -- self drawn titlebar)
+  if self.titlebar and y < self.titlebar.position.y + self.titlebar.size.y then
+    self.titlebar:on_mouse_pressed(button, x, y, clicks)
+    return
+  end
+
   local div = self.root_node:get_divider_overlapping_point(x, y)
   if div then
     self.dragged_divider = div
@@ -502,12 +514,15 @@ function RootView:on_mouse_pressed(button, x, y, clicks)
   end
 end
 
-function RootView:on_mouse_released(...)
+function RootView:on_mouse_released(button, x, y)
   if self.dragged_divider then
     self.dragged_divider = nil
     self.resized_detached = nil
   end
-  self.root_node:on_mouse_released(...)
+  if self.titlebar and self.titlebar.pressed_button then
+    self.titlebar:on_mouse_released(button, x, y)
+  end
+  self.root_node:on_mouse_released(button, x, y)
 end
 
 function RootView:on_mouse_moved(x, y, dx, dy)
@@ -516,6 +531,13 @@ function RootView:on_mouse_moved(x, y, dx, dy)
   if fv then
     fv:on_mouse_moved(x, y, dx, dy)
     system.set_cursor(fv.cursor)
+    return
+  end
+
+  -- titlebar hover detection for cursor changes
+  if self.titlebar and y < self.titlebar.position.y + self.titlebar.size.y then
+    self.titlebar:on_mouse_moved(x, y, dx, dy)
+    system.set_cursor(self.titlebar.cursor)
     return
   end
 
@@ -599,7 +621,19 @@ function RootView:on_text_input(...)
 end
 
 function RootView:update()
-  copy_position_and_size(self.root_node, self)
+  if self.titlebar then
+    self.titlebar.position.x = 0
+    self.titlebar.position.y = 0
+    self.titlebar.size.x = self.size.x
+    self.titlebar:update()
+    local th = self.titlebar.size.y
+    self.root_node.position.x = self.position.x
+    self.root_node.position.y = self.position.y + th
+    self.root_node.size.x = self.size.x
+    self.root_node.size.y = self.size.y - th
+  else
+    copy_position_and_size(self.root_node, self)
+  end
   self.root_node:update()
   self.root_node:update_layout()
   for _, view in ipairs(self.floating_views) do
@@ -608,6 +642,9 @@ function RootView:update()
 end
 
 function RootView:draw()
+  if self.titlebar then
+    self.titlebar:draw()
+  end
   self.root_node:draw()
   while #self.deferred_draws > 0 do
     local t = table.remove(self.deferred_draws)
