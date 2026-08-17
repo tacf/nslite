@@ -1,6 +1,11 @@
 local common = {}
 
 
+function common.primary_modifier()
+  return PLATFORM == "macOS" and "cmd" or "ctrl"
+end
+
+
 function common.is_utf8_cont(char)
   local byte = char:byte()
   return byte >= 0x80 and byte < 0xc0

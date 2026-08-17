@@ -1,4 +1,5 @@
 local command = require "core.command"
+local common = require "core.common"
 local keymap = {}
 
 keymap.modkeys = {}
@@ -35,8 +36,7 @@ end
 
 local function resolve_mod(stroke)
   -- Default bindings use "mod" for the platform's primary shortcut modifier.
-  local modifier = PLATFORM == "macOS" and "cmd" or "ctrl"
-  return stroke:gsub("mod%+", modifier .. "+")
+  return stroke:gsub("mod%+", common.primary_modifier() .. "+")
 end
 
 
