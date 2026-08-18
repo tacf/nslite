@@ -1,11 +1,16 @@
 local core = require "core"
 local common = require "core.common"
 local command = require "core.command"
+local config = require "core.config"
 local keymap = require "core.keymap"
-local LogView = require "core.logview"
+local style = require "core.style"
+local LogView = require "core.presentations.log"
+local TitleBarView = require "core.presentations.titlebar"
+local renderer = require "renderer"
 
 
 local fullscreen = false
+local debug_enabled = false
 
 command.add(nil, {
   ["core:quit"] = function()
@@ -88,6 +93,11 @@ command.add(nil, {
     core.open_file(USERDIR .. PATHSEP .. "init.lua")
   end,
 
+  ["core:toggle-debug"] = function()
+    debug_enabled = not debug_enabled
+    renderer.show_debug(debug_enabled)
+  end,
+
   ["core:open-project-module"] = function()
     local filename = core.project_path(".nslite_project.lua")
     if system.get_file_info(filename) then
@@ -97,5 +107,20 @@ command.add(nil, {
       core.root_view:open_doc(doc)
       doc:save(filename)
     end
+  end,
+
+  ["core:toggle-native-titlebar"] = function()
+    config.native_title_bar = not config.native_title_bar
+    if config.native_title_bar then
+      system.configure_titlebar(0, 0)
+      core.root_view.titlebar = nil
+    else
+      local th = style.font:get_height() + style.padding.y * 2
+      local bm = 30 * 3 + style.padding.x
+      system.configure_titlebar(th, bm)
+      core.root_view.titlebar = TitleBarView()
+      core.root_view.titlebar:set_title(core.window_title or "nslite")
+    end
+    core.redraw = true
   end,
 })

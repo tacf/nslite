@@ -2,7 +2,7 @@ local core = require "core"
 local config = require "core.config"
 local style = require "core.style"
 local common = require "core.common"
-local Object = require "core.object"
+local Object = require "core.utils.object"
 
 
 local View = Object:extend()

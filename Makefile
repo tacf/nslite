@@ -6,11 +6,11 @@ all: build
 
 build:
 	@mkdir -p build
-	@cd build && cmake $(CMAKE_FLAGS) -DCMAKE_BUILD_TYPE=Debug .. && cmake --build . --parallel 2
+	@cd build && cmake $(CMAKE_FLAGS) -DCMAKE_BUILD_TYPE=Debug .. && cmake --build . -j
 
 release:
 	@mkdir -p build
-	@cd build && cmake $(CMAKE_FLAGS) -DCMAKE_BUILD_TYPE=Release .. && cmake --build . --parallel 2
+	@cd build && cmake $(CMAKE_FLAGS) -DCMAKE_BUILD_TYPE=Release .. && cmake --build . -j
 
 clean:
 	@rm -rf build

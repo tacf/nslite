@@ -15,24 +15,24 @@ local t = {
     local node = core.root_view:get_active_node()
     local idx = node:get_view_idx(core.active_view)
     idx = idx - 1
-    if idx < 1 then idx = #node.views end
-    node:set_active_view(node.views[idx])
+    if idx < 1 then idx = #node.nodes end
+    node:set_active_view(node.nodes[idx])
   end,
 
   ["root:switch-to-next-tab"] = function()
     local node = core.root_view:get_active_node()
     local idx = node:get_view_idx(core.active_view)
     idx = idx + 1
-    if idx > #node.views then idx = 1 end
-    node:set_active_view(node.views[idx])
+    if idx > #node.nodes then idx = 1 end
+    node:set_active_view(node.nodes[idx])
   end,
 
   ["root:move-tab-left"] = function()
     local node = core.root_view:get_active_node()
     local idx = node:get_view_idx(core.active_view)
     if idx > 1 then
-      table.remove(node.views, idx)
-      table.insert(node.views, idx - 1, core.active_view)
+      node:del_child(idx)
+      node:add_child(core.active_view, idx - 1)
       node:scroll_tab_into_view(core.active_view)
     end
   end,
@@ -40,24 +40,24 @@ local t = {
   ["root:move-tab-right"] = function()
     local node = core.root_view:get_active_node()
     local idx = node:get_view_idx(core.active_view)
-    if idx < #node.views then
-      table.remove(node.views, idx)
-      table.insert(node.views, idx + 1, core.active_view)
+    if idx < #node.nodes then
+      node:del_child(idx)
+      node:add_child(core.active_view, idx + 1)
       node:scroll_tab_into_view(core.active_view)
     end
   end,
 
   ["root:shrink"] = function()
     local node = core.root_view:get_active_node()
-    local parent = node:get_parent_node(core.root_view.root_node)
-    local n = (parent.a == node) and -0.1 or 0.1
+    local parent = node:get_parent(core.root_view.root_node)
+    local n = (parent.nodes[node.LEFT] == node) and -0.1 or 0.1
     parent.divider = common.clamp(parent.divider + n, 0.1, 0.9)
   end,
 
   ["root:grow"] = function()
     local node = core.root_view:get_active_node()
-    local parent = node:get_parent_node(core.root_view.root_node)
-    local n = (parent.a == node) and 0.1 or -0.1
+    local parent = node:get_parent(core.root_view.root_node)
+    local n = (parent.nodes[node.LEFT] == node) and 0.1 or -0.1
     parent.divider = common.clamp(parent.divider + n, 0.1, 0.9)
   end,
 }
@@ -66,7 +66,7 @@ local t = {
 for i = 1, 9 do
   t["root:switch-to-tab-" .. i] = function()
     local node = core.root_view:get_active_node()
-    local view = node.views[i]
+    local view = node.nodes[i]
     if view then
       node:set_active_view(view)
     end

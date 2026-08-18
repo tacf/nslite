@@ -1,4 +1,5 @@
 local core = require "core"
+local common = require "core.common"
 local config = require "core.config"
 local style = require "core.style"
 local DocView = require "core.docview"
@@ -6,11 +7,6 @@ local StatusView = require "core.statusview"
 
 
 local clients = setmetatable({}, { __mode = "k" })
-
-
-local function primary_modifier_down()
-  return system.key_modifier_down(PLATFORM == "macOS" and "cmd" or "ctrl")
-end
 
 
 local function matching_server(filename)
@@ -103,7 +99,7 @@ local function update_link(view)
   local mouse = core.root_view.mouse
   local pointer_over_text = pointer_is_over_text(view, mouse.x, mouse.y)
   local filename = view.doc:get_filename()
-  if not primary_modifier_down() or not pointer_over_text or not filename then
+  if not system.key_modifier_down(common.primary_modifier()) or not pointer_over_text or not filename then
     clear_link(view, pointer_over_text)
     return
   end
@@ -166,7 +162,7 @@ end
 
 local docview_mouse_pressed = DocView.on_mouse_pressed
 function DocView:on_mouse_pressed(button, x, y, clicks)
-  if button == "left" and primary_modifier_down() then
+  if button == "left" and system.key_modifier_down(common.primary_modifier()) then
     update_link(self)
     local link = self.lsp_link
     if link and link.revision == self.doc:get_revision() then
