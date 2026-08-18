@@ -2,6 +2,7 @@
 #define RENDERER_H
 
 #include <SDL3/SDL.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 typedef struct RenImage RenImage;
@@ -15,6 +16,7 @@ void ren_init(SDL_Window *win);
 void ren_update_rects(RenRect *rects, int count);
 void ren_set_clip_rect(RenRect rect);
 void ren_get_size(int *x, int *y);
+bool ren_window_is_maximized_or_full(void);
 
 RenImage* ren_new_image(int width, int height);
 RenImage* ren_new_image_from_rgba(int width, int height, const void *data, size_t data_len);

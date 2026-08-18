@@ -92,6 +92,12 @@ void ren_get_size(int *x, int *y) {
 }
 
 
+bool ren_window_is_maximized_or_full(void) {
+  SDL_WindowFlags flags = SDL_GetWindowFlags(window);
+  return (flags & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_MAXIMIZED)) != 0;
+}
+
+
 RenImage *ren_new_image(int width, int height) {
   assert(width > 0 && height > 0);
   size_t pixel_count = (size_t) width * (size_t) height;

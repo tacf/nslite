@@ -124,7 +124,8 @@ void rencache_free_image(RenImage *image) {
 
 
 static inline RenRect offset_rect(RenRect r) {
-  return (RenRect) { r.x + shadow_size, r.y + shadow_size, r.width, r.height };
+  int s = rencache_get_shadow();
+  return (RenRect) { r.x + s, r.y + s, r.width, r.height };
 }
 
 
@@ -149,8 +150,8 @@ int rencache_draw_text(
   RenFont *font, const char *text, int x, int y, RenColor color) {
   int orig_x = x;
   RenRect rect;
-  rect.x = x + shadow_size;
-  rect.y = y + shadow_size;
+  rect.x = x + rencache_get_shadow();
+  rect.y = y + rencache_get_shadow();
   rect.width = ren_get_font_width(font, text);
   rect.height = ren_get_font_height(font);
 
@@ -296,10 +297,10 @@ void rencache_end_frame(void) {
    * engine and not by native ui).
    * Draw quads with alpha increasing quadratically up to SHADOW_ALPHA 
    * against the actual editor content. */
-  if (shadow_size > 0) {
+  if (rencache_get_shadow() > 0) {
     int w = screen_rect.width;
     int h = screen_rect.height;
-    int s = shadow_size;
+    int s = rencache_get_shadow();
     ren_set_clip_rect(screen_rect);
     for (int i = 0; i < s; i++) {
       float t = (float) (i + 1) / s;
@@ -341,4 +342,7 @@ void rencache_end_frame(void) {
 
 void rencache_set_shadow(int size) { shadow_size = size; }
 
-int rencache_get_shadow(void) { return shadow_size; }
+/* maximized/fullscreen windows supress fake shadow */
+int rencache_get_shadow(void) {
+  return ren_window_is_maximized_or_full() ? 0 : shadow_size;
+}

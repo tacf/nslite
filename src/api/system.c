@@ -11,6 +11,11 @@
 
 extern SDL_Window *window;
 
+static int g_titlebar_height = 0;
+static int g_titlebar_drag_margin = 0;
+
+#define SHADOW_PX 8
+
 
 static const char *button_name(int button) {
   switch (button) {
@@ -180,14 +185,20 @@ static int f_set_window_title(lua_State *L) {
 static const char *window_opts[] = { "normal", "maximized", "fullscreen", 0 };
 enum { WIN_NORMAL, WIN_MAXIMIZED, WIN_FULLSCREEN };
 
+/* the shadow inset follows the window state (see rencache_get_shadow), so the
+ * fullscreen flag has to actually be cleared here -- SDL_RestoreWindow only
+ * undoes minimize/maximize */
 static int f_set_window_mode(lua_State *L) {
   int n = luaL_checkoption(L, 1, "normal", window_opts);
   if (n == WIN_FULLSCREEN) {
     SDL_SetWindowFullscreen(window, true);
-  } else if (n == WIN_NORMAL) {
-    SDL_RestoreWindow(window);
-  } else if (n == WIN_MAXIMIZED) {
-    SDL_MaximizeWindow(window);
+  } else {
+    SDL_SetWindowFullscreen(window, false);
+    if (n == WIN_NORMAL) {
+      SDL_RestoreWindow(window);
+    } else if (n == WIN_MAXIMIZED) {
+      SDL_MaximizeWindow(window);
+    }
   }
   return 0;
 }
@@ -199,11 +210,6 @@ static int f_minimize_window(lua_State *L) {
   return 0;
 }
 
-
-static int g_titlebar_height = 0;
-static int g_titlebar_drag_margin = 0;
-
-#define SHADOW_PX 8
 
 static SDL_HitTestResult SDLCALL hit_test_cb(
   SDL_Window *win, const SDL_Point *point, void *data) {
