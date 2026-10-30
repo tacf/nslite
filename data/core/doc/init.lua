@@ -1,4 +1,4 @@
-local Object = require "core.object"
+local Object = require "core.utils.object"
 local syntax = require "core.syntax"
 local config = require "core.config"
 

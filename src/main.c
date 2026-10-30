@@ -155,6 +155,13 @@ int main(int argc, char **argv) {
   SDL_Init(SDL_INIT_VIDEO);
   SDL_EnableScreenSaver();
 
+  /* This ladies and gents is why we looooove graphics API and window 
+   * compositors - SDL does not yet provide a proper Wayland buffer
+   * handling (probably because Wayland is awsome :'| ). 
+   * To have actual software rendered fake the window shadow when we
+   * take over the window native title bar we need to rely on X11 +
+   * OpenGL - merely for window composition - but we still blit into
+   * the buffer/surface. THIS WAS NOT FUN !! */
   SDL_SetHint(SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR, "0");
   SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
 
@@ -163,8 +170,18 @@ int main(int argc, char **argv) {
   int dw = dm ? dm->w : 1280;
   int dh = dm ? dm->h : 720;
 
-  window = SDL_CreateWindow("", dw * 4 / 5, dh * 4 / 5,
-    SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+  SDL_WindowFlags window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN
+    | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_TRANSPARENT;
+
+  /* This is the hack for X11 to setup OpenGL in visual selection to be able to
+   * fake window shadow since only this way we get the ability to use alpha
+   * channel */
+  const char *video_driver = SDL_GetCurrentVideoDriver();
+  if (video_driver && SDL_strcmp(video_driver, "x11") == 0) {
+    window_flags |= SDL_WINDOW_OPENGL;
+  }
+
+  window = SDL_CreateWindow("", dw * 4 / 5, dh * 4 / 5, window_flags);
   if (!window) {
     fprintf(stderr, "Failed to create window: %s\n", SDL_GetError());
     return EXIT_FAILURE;
@@ -180,6 +197,18 @@ int main(int argc, char **argv) {
   lua_State *L = luaL_newstate();
   luaL_openlibs(L);
   api_load_libs(L);
+
+  /* Create the window icon as a Lua userdata to use in the titlebar
+  *  -- only on custom title bar */
+  {
+#include "../icon.inl"
+    RenImage *icon_img =
+      ren_new_image_from_rgba(64, 64, icon_rgba, icon_rgba_len);
+    RenImage **ud = lua_newuserdata(L, sizeof(*ud));
+    *ud = icon_img;
+    luaL_setmetatable(L, API_TYPE_IMAGE);
+    lua_setglobal(L, "WINDOW_ICON");
+  }
 
 
   lua_newtable(L);
@@ -197,6 +226,8 @@ int main(int argc, char **argv) {
 
   lua_pushnumber(L, window_get_scale(window));
   lua_setglobal(L, "SCALE");
+
+  lua_pushnumber(L, window_get_pixel_density(window));
 
   char exename[2048];
   get_exe_filename(argv[0], exename, sizeof(exename));

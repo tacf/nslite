@@ -25,9 +25,8 @@ static uint8_t check_color_component(lua_State *L, int index) {
 static RenColor checkcolor(lua_State *L, int idx, uint8_t default_value) {
   RenColor color;
   if (lua_isnoneornil(L, idx)) {
-    return (RenColor) {
-      default_value, default_value, default_value, UINT8_MAX
-    };
+    return (
+      RenColor) { default_value, default_value, default_value, UINT8_MAX };
   }
   lua_rawgeti(L, idx, 1);
   lua_rawgeti(L, idx, 2);
@@ -52,8 +51,9 @@ static int f_show_debug(lua_State *L) {
 static int f_get_size(lua_State *L) {
   int w, h;
   ren_get_size(&w, &h);
-  lua_pushnumber(L, w);
-  lua_pushnumber(L, h);
+  int shadow = rencache_get_shadow();
+  lua_pushnumber(L, w - shadow * 2);
+  lua_pushnumber(L, h - shadow * 2);
   return 2;
 }
 
@@ -119,17 +119,11 @@ static int f_draw_image(lua_State *L) {
 }
 
 
-static const luaL_Reg lib[] = {
-  { "show_debug",    f_show_debug    },
-  { "get_size",      f_get_size      },
-  { "begin_frame",   f_begin_frame   },
-  { "end_frame",     f_end_frame     },
-  { "set_clip_rect", f_set_clip_rect },
-  { "draw_rect",     f_draw_rect     },
-  { "draw_text",     f_draw_text     },
-  { "draw_image",    f_draw_image    },
-  { NULL,            NULL            }
-};
+static const luaL_Reg lib[] = { { "show_debug", f_show_debug },
+  { "get_size", f_get_size }, { "begin_frame", f_begin_frame },
+  { "end_frame", f_end_frame }, { "set_clip_rect", f_set_clip_rect },
+  { "draw_rect", f_draw_rect }, { "draw_text", f_draw_text },
+  { "draw_image", f_draw_image }, { NULL, NULL } };
 
 
 int luaopen_renderer_font(lua_State *L);

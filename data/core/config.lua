@@ -17,6 +17,8 @@ config.indent_size = 2
 config.tab_type = "soft"
 config.line_limit = 80
 
+config.native_title_bar = false
+
 -- Language servers start lazily, the first time mod is held over a matching
 -- document. Add or replace entries from user/init.lua as needed.
 config.lsp = {
