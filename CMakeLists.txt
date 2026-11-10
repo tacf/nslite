@@ -41,12 +41,11 @@ else()
 
     FetchContent_Declare(
         SDL3
-        GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-        # Pinned due to unguarded regression added ind upstream. 
-        # Commit a00b14fee, which added unguarded SDL_OnUpdateJoysticksChanged 
-        # calls with SDL_JOYSTICK=OFF.
-        GIT_TAG        c172ab7164145a6a3ffabecc1c0a02dc0bde673d
-        GIT_SHALLOW    TRUE
+        # Pin before a00b14fee, which added unguarded
+        # SDL_OnUpdateJoysticksChanged calls with SDL_JOYSTICK=OFF.
+        # Use an archive: shallow clones cannot check out arbitrary old commits.
+        URL            https://github.com/libsdl-org/SDL/archive/c172ab7164145a6a3ffabecc1c0a02dc0bde673d.tar.gz
+        URL_HASH       SHA256=fcbf13bc4090874beac54c2a096e6064d807e0f1820881ad5559d28c7ce5ecf2
     )
 
     set(SDL_SHARED OFF CACHE BOOL "" FORCE)
