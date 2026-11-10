@@ -52,6 +52,10 @@ void ren_init(SDL_Window *win) {
   assert(win);
   window = win;
   SDL_Surface *surf = SDL_GetWindowSurface(window);
+  if (!surf) {
+    fprintf(stderr, "Failed to get window surface: %s\n", SDL_GetError());
+    exit(EXIT_FAILURE);
+  }
   if (surf->format != SDL_PIXELFORMAT_ARGB8888) {
     fprintf(stderr, "Warning: unexpected pixel format %s (expected ARGB8888)\n",
       SDL_GetPixelFormatName(surf->format));
