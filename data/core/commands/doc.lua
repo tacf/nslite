@@ -40,8 +40,8 @@ local function remove_from_start_of_selected_lines(text, skip_empty)
   local line1, col1, line2, col2, swap = doc():get_selection(true)
   for line = line1, line2 do
     local line_text = doc():get_line(line)
-    if  line_text:sub(1, #text) == text
-    and (not skip_empty or line_text:find("%S"))
+    if line_text:sub(1, #text) == text
+        and (not skip_empty or line_text:find("%S"))
     then
       doc():remove(line, 1, line, #text + 1)
     end
@@ -269,9 +269,8 @@ local commands = {
         core.error("Invalid line number or unmatched string")
         return
       end
-      dv.doc:set_selection(line, 1  )
+      dv.doc:set_selection(line, 1)
       dv:scroll_to_line(line, true)
-
     end, function(text)
       if not text:find("^%d*$") then
         init_items()

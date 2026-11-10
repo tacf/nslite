@@ -28,7 +28,6 @@ function TreeView:new()
   self.total_size = 0
 end
 
-
 function TreeView:get_cached(item)
   local t = self.cache[item.filename]
   if not t then
@@ -45,16 +44,13 @@ function TreeView:get_cached(item)
   return t
 end
 
-
 function TreeView:get_name()
   return "Project"
 end
 
-
 function TreeView:get_item_height()
   return style.font:get_height() + style.padding.y
 end
-
 
 function TreeView:check_cache()
   -- invalidate cache's skip values if project_files has changed
@@ -65,7 +61,6 @@ function TreeView:check_cache()
     self.last_project_files = core.project_files
   end
 end
-
 
 function TreeView:each_item()
   return coroutine.wrap(function()
@@ -104,26 +99,22 @@ function TreeView:each_item()
   end)
 end
 
-
 function TreeView:get_scrollable_size()
   return self.total_size
 end
 
-
 function TreeView:get_item_at(px, py)
-  for item, x,y,w,h in self:each_item() do
+  for item, x, y, w, h in self:each_item() do
     if px > x and py > y and px <= x + w and py <= y + h then
       return item
     end
   end
 end
 
-
 function TreeView:on_mouse_moved(px, py, ...)
   TreeView.super.on_mouse_moved(self, px, py, ...)
   self.hovered_item = self:get_item_at(px, py)
 end
-
 
 function TreeView:on_mouse_pressed(button, x, y, clicks)
   if TreeView.super.on_mouse_pressed(self, button, x, y, clicks) then
@@ -143,7 +134,6 @@ function TreeView:on_mouse_pressed(button, x, y, clicks)
     end)
   end
 end
-
 
 function TreeView:update()
   -- update width
@@ -165,7 +155,6 @@ function TreeView:update()
   self.hovered_item = self:get_item_at(mouse.x, mouse.y)
 end
 
-
 function TreeView:get_item_icon(item, active, hovered)
   local icon = "f"
   if item.type == "dir" then
@@ -174,7 +163,6 @@ function TreeView:get_item_icon(item, active, hovered)
   local color = (active or hovered) and style.accent or style.text
   return icon, style.icon_font, color
 end
-
 
 function TreeView:draw_item_chevron(item, active, hovered, x, y, w, h)
   if item.type == "dir" then
@@ -185,13 +173,11 @@ function TreeView:draw_item_chevron(item, active, hovered, x, y, w, h)
   return style.padding.x
 end
 
-
 function TreeView:draw_item_icon(item, active, hovered, x, y, w, h)
   local icon, font, color = self:get_item_icon(item, active, hovered)
   common.draw_text(font, color, icon, nil, x, y, 0, h)
   return font:get_width(icon)
 end
-
 
 function TreeView:draw()
   self:draw_background(style.background2)
@@ -203,14 +189,14 @@ function TreeView:draw()
 
   local top, bottom = self.position.y, self.position.y + self.size.y
 
-  for item, ix,y,w,h in self:each_item() do
+  for item, ix, y, w, h in self:each_item() do
     -- the iterator must run to completion to keep total_size right, but there
     -- is no point drawing rows outside the viewport
     if y + h >= top and y < bottom then
       -- both sides can be nil for an unresolvable path; nil == nil would mark
       -- every such item active
       local active = active_filename ~= nil
-        and item.abs_filename == active_filename
+          and item.abs_filename == active_filename
       local hovered = item == self.hovered_item
       local color = active and style.accent or style.text
       local x = ix
@@ -235,7 +221,6 @@ function TreeView:draw()
   self:draw_scrollbar()
 end
 
-
 -- init
 local view = TreeView()
 local node = core.root_view:get_active_node()
@@ -252,5 +237,6 @@ command.add(nil, {
 })
 
 keymap.add { ["mod+\\"] = "treeview:toggle" }
+
 
 return TreeView

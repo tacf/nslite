@@ -30,6 +30,6 @@ SortIncludes: Never
 IncludeBlocks: Preserve
 ReflowComments: false
 BreakStringLiterals: false
-MaxEmptyLinesToKeep: 2
+MaxEmptyLinesToKeep: 1
 InsertNewlineAtEOF: true
 ...
