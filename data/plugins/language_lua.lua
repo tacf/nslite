@@ -5,58 +5,58 @@ syntax.add {
   headers = "^#!.*[ /]lua",
   comment = "--",
 
-patterns = {
-  -- Quoted strings
-  { pattern = { '"', '"', '\\' }, type = "string" },
-  { pattern = { "'", "'", '\\' }, type = "string" },
+  patterns = {
+    -- Quoted strings
+    { pattern = { '"', '"', '\\' },               type = "string" },
+    { pattern = { "'", "'", '\\' },               type = "string" },
 
-  -- Multiline comments (long brackets)
-  { regex = { [=[--\[==\[]=], [=[\]==\]]=] }, type = "comment" },
-  { regex = { [=[--\[=\[]=],  [=[\]=\]]=] },  type = "comment" },
-  { regex = { [=[--\[\[]=],   [=[\]\]]=] },   type = "comment" },
+    -- Multiline comments (long brackets)
+    { pattern = { [=[--\[==\[]=], [=[\]==\]]=] }, type = "comment" },
+    { pattern = { [=[--\[=\[]=], [=[\]=\]]=] },   type = "comment" },
+    { pattern = { [=[--\[\[]=], [=[\]\]]=] },     type = "comment" },
 
-  -- Single-line comments
-  { regex = [=[--[^\r\n]*]=], type = "comment" },
+    -- Single-line comments
+    { pattern = [=[--[^\r\n]*]=],                 type = "comment" },
 
-  -- Multiline strings (long brackets)
-  { regex = { [=[\[==\[]=], [=[\]==\]]=] }, type = "string" },
-  { regex = { [=[\[=\[]=],  [=[\]=\]]=] },  type = "string" },
-  { regex = { [=[\[\[]=],   [=[\]\]]=] },   type = "string" },
+    -- Multiline strings (long brackets)
+    { pattern = { [=[\[==\[]=], [=[\]==\]]=] },   type = "string" },
+    { pattern = { [=[\[=\[]=], [=[\]=\]]=] },     type = "string" },
+    { pattern = { [=[\[\[]=], [=[\]\]]=] },       type = "string" },
 
-  -- Hexadecimal numbers
-  { regex = [=[0[xX](?:[0-9A-Fa-f]+(?:\.(?!\.)[0-9A-Fa-f]*)?|\.[0-9A-Fa-f]+)(?:[pP][+-]?\d+)?]=],
-    type = "number" },
+    -- Hexadecimal numbers
+    { pattern = [=[0[xX](?:[0-9A-Fa-f]+(?:\.(?!\.)[0-9A-Fa-f]*)?|\.[0-9A-Fa-f]+)(?:[pP][+-]?\d+)?]=],
+      type = "number" },
 
-  -- Decimal numbers, including scientific notation
-  { regex = [=[(?:\d+\.(?!\.)\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?]=],
-    type = "number" },
+    -- Decimal numbers, including scientific notation
+    { pattern = [=[(?:\d+\.(?!\.)\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?]=],
+      type = "number" },
 
-  -- Special keywords
-  { regex = [=[<[A-Za-z]+>]=], type = "keyword2" },
+    -- Special keywords
+    { pattern = [=[<[A-Za-z]+>]=], type = "keyword2" },
 
-  -- Lua labels
-  { regex = [=[::[A-Za-z_][A-Za-z0-9_]*::]=],
-    type = "function" },
+    -- Lua labels
+    { pattern = [=[::[A-Za-z_][A-Za-z0-9_]*::]=],
+      type = "function" },
 
-  -- Range / concatenation operators
-  { regex = [=[\.\.\.?]=], type = "operator" },
+    -- Range / concatenation operators
+    { pattern = [=[\.\.\.?]=],     type = "operator" },
 
-  -- Multi-character operators
-  { regex = [=[<=|>=|==|~=|//|<<|>>]=],
-    type = "operator" },
+    -- Multi-character operators
+    { pattern = [=[<=|>=|==|~=|//|<<|>>]=],
+      type = "operator" },
 
-  -- Single-character operators
-  { regex = [=[[+\-=/\*^%#<>&|~]]=],
-    type = "operator" },
+    -- Single-character operators
+    { pattern = [=[[+\-=/\*^%#<>&|~]]=],
+      type = "operator" },
 
-  -- Function calls
-  { regex = [=[[A-Za-z_][A-Za-z0-9_]*(?=\s*[("{])]=],
-    type = "function" },
+    -- Function calls
+    { pattern = [=[[A-Za-z_][A-Za-z0-9_]*(?=\s*[("{])]=],
+      type = "function" },
 
-  -- Identifiers
-  { regex = [=[[A-Za-z_][A-Za-z0-9_]*]=],
-    type = "symbol" },
-},
+    -- Identifiers
+    { pattern = [=[[A-Za-z_][A-Za-z0-9_]*]=],
+      type = "symbol" },
+  },
   symbols = {
     ["if"]       = "keyword",
     ["then"]     = "keyword",
