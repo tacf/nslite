@@ -7,18 +7,18 @@ keymap.map = {}
 keymap.reverse_map = {}
 
 local modkey_map = {
-  ["left ctrl"]   = "ctrl",
-  ["right ctrl"]  = "ctrl",
+  ["left ctrl"]     = "ctrl",
+  ["right ctrl"]    = "ctrl",
   -- SDL calls the platform modifier "GUI": Command on macOS, Windows/Super elsewhere.
   -- The Command spellings are fallback aliases for backends that use that name directly.
   ["left gui"]      = "cmd",
   ["right gui"]     = "cmd",
   ["left command"]  = "cmd",
   ["right command"] = "cmd",
-  ["left shift"]  = "shift",
-  ["right shift"] = "shift",
-  ["left alt"]    = "alt",
-  ["right alt"]   = "altgr",
+  ["left shift"]    = "shift",
+  ["right shift"]   = "shift",
+  ["left alt"]      = "alt",
+  ["right alt"]     = "altgr",
 }
 
 local modkeys = { "cmd", "ctrl", "alt", "altgr", "shift" }
@@ -61,13 +61,13 @@ function keymap.add(map, overwrite)
   end
 end
 
-
 function keymap.get_binding(cmd)
   return keymap.reverse_map[cmd]
 end
 
-
-function keymap.on_key_pressed(k)
+-- Optional filter limits command dispatch for modal views, without losing
+-- modifier state or changing the user's bindings.
+function keymap.on_key_pressed(k, filter)
   local mk = modkey_map[k]
   if mk then
     keymap.modkeys[mk] = true
@@ -80,7 +80,7 @@ function keymap.on_key_pressed(k)
     local commands = keymap.map[stroke]
     if commands then
       for _, cmd in ipairs(commands) do
-        local performed = command.perform(cmd)
+        local performed = (not filter or filter(cmd)) and command.perform(cmd)
         if performed then break end
       end
       return true
@@ -89,14 +89,12 @@ function keymap.on_key_pressed(k)
   return false
 end
 
-
 function keymap.on_key_released(k)
   local mk = modkey_map[k]
   if mk then
     keymap.modkeys[mk] = false
   end
 end
-
 
 keymap.add {
   ["mod+shift+p"] = "core:find-command",

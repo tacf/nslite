@@ -21,7 +21,6 @@ function command.add(predicate, map)
   end
 end
 
-
 local function capitalize_first(str)
   return str:sub(1, 1):upper() .. str:sub(2)
 end
@@ -29,7 +28,6 @@ end
 function command.prettify_name(name)
   return name:gsub(":", ": "):gsub("-", " "):gsub("%S+", capitalize_first)
 end
-
 
 function command.get_all_valid()
   local res = {}
@@ -40,7 +38,6 @@ function command.get_all_valid()
   end
   return res
 end
-
 
 local function perform(name)
   local cmd = command.map[name]
@@ -57,13 +54,11 @@ function command.perform(...)
   return not ok or res
 end
 
-
 function command.add_defaults()
-  local reg = { "core", "root", "command", "doc", "findreplace" }
+  local reg = { "core", "root", "command", "doc", "findreplace", "contextmenu" }
   for _, name in ipairs(reg) do
     require("core.commands." .. name)
   end
 end
-
 
 return command

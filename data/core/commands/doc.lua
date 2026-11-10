@@ -2,6 +2,7 @@ local core = require "core"
 local command = require "core.command"
 local common = require "core.common"
 local config = require "core.config"
+local contextmenu = require "core.contextmenu"
 local translate = require "core.doc.translate"
 local DocView = require "core.docview"
 
@@ -363,3 +364,17 @@ commands["doc:move-to-next-char"] = function()
 end
 
 command.add("core.docview", commands)
+
+
+contextmenu.add(DocView, function(view)
+  local has_selection = view.doc:has_selection()
+  return {
+    { text = "Cut",   command = "doc:cut",  enabled = has_selection },
+    { text = "Copy",  command = "doc:copy", enabled = has_selection },
+    { text = "Paste", command = "doc:paste" },
+    "-",
+    { text = "Select All",           command = "doc:select-all" },
+    "-",
+    { text = "Toggle Line Comments", command = "doc:toggle-line-comments" },
+  }
+end)

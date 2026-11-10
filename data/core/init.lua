@@ -9,6 +9,7 @@ local StatusView
 local CommandView
 local FindView
 local Doc
+local ContextMenu
 
 local core = {}
 
@@ -88,6 +89,7 @@ function core.init()
   CommandView = require "core.commandview"
   FindView = require "core.findview"
   Doc = require "core.doc"
+  ContextMenu = require "core.contextmenuview"
 
   local project_dir = EXEDIR
   local files = {}
@@ -113,6 +115,7 @@ function core.init()
   core.root_view = RootView()
   core.command_view = CommandView()
   core.find_view = FindView()
+  core.context_menu = ContextMenu()
   core.status_view = StatusView()
 
   -- apply borderless window when using own title bar
@@ -125,6 +128,7 @@ function core.init()
   core.root_view.root_node:split("down", core.status_view, true)
   core.root_view:add_floating_view(core.command_view)
   core.root_view:add_floating_view(core.find_view)
+  core.root_view:add_floating_view(core.context_menu)
 
   core.project_scan_thread = core.add_thread(project_scan_thread)
   command.add_defaults()
@@ -353,7 +357,7 @@ function core.on_event(type, ...)
   if type == "textinput" then
     core.root_view:on_text_input(...)
   elseif type == "keypressed" then
-    did_keymap = keymap.on_key_pressed(...)
+    did_keymap = core.root_view:on_key_pressed(...)
   elseif type == "keyreleased" then
     keymap.on_key_released(...)
   elseif type == "mousemoved" then

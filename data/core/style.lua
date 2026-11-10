@@ -15,6 +15,12 @@ style.commandview_shadow_offset = common.round(2 * SCALE)
 style.commandview_shadow_color = { 0, 0, 0, 90 }
 style.commandview_overlay_color = { 0, 0, 0, 110 }
 
+-- context menu (configurable)
+style.contextmenu_min_width = math.ceil(140 * SCALE)
+style.contextmenu_margin = common.round(6 * SCALE)
+style.contextmenu_corner_radius = common.round(4 * SCALE)
+style.contextmenu_border_width = common.round(1 * SCALE)
+
 style.font = renderer.font.load(EXEDIR .. "/data/fonts/font.ttf", 14 * SCALE)
 style.big_font = renderer.font.load(EXEDIR .. "/data/fonts/font.ttf", 34 * SCALE)
 style.icon_font = renderer.font.load(EXEDIR .. "/data/fonts/icons.ttf", 14 * SCALE)

@@ -60,10 +60,9 @@ function DocView:new(doc)
   self.blink_timer = 0
 end
 
-
 function DocView:try_close(do_close)
   if self.doc:is_dirty()
-  and #core.get_views_referencing_doc(self.doc) == 1 then
+      and #core.get_views_referencing_doc(self.doc) == 1 then
     core.command_view:enter("Unsaved Changes; Confirm Close", function(_, item)
       if item.text:match("^[cC]") then
         do_close()
@@ -82,48 +81,40 @@ function DocView:try_close(do_close)
   end
 end
 
-
 function DocView:get_name()
   local post = self.doc:is_dirty() and "*" or ""
   local name = self.doc:get_name()
   return name:match("[^/%\\]*$") .. post
 end
 
-
 function DocView:get_scrollable_size()
   return self:get_line_height() * (self.doc:line_count() - 1) + self.size.y
 end
-
 
 function DocView:get_font()
   return style[self.font]
 end
 
-
 function DocView:get_line_height()
   return math.floor(self:get_font():get_height() * config.line_height)
 end
-
 
 function DocView:get_gutter_width()
   return self:get_font():get_width(self.doc:line_count()) + style.padding.x * 2
 end
 
-
 function DocView:get_line_screen_position(idx)
   local x, y = self:get_content_offset()
   local lh = self:get_line_height()
   local gw = self:get_gutter_width()
-  return x + gw, y + (idx-1) * lh + style.padding.y
+  return x + gw, y + (idx - 1) * lh + style.padding.y
 end
-
 
 function DocView:get_line_text_y_offset()
   local lh = self:get_line_height()
   local th = self:get_font():get_height()
   return (lh - th) / 2
 end
-
 
 function DocView:get_visible_line_range()
   local x, y, x2, y2 = self:get_content_bounds()
@@ -133,13 +124,11 @@ function DocView:get_visible_line_range()
   return minline, maxline
 end
 
-
 function DocView:get_col_x_offset(line, col)
   local text = self.doc:get_line(line)
   if not text then return 0 end
   return self:get_font():get_width(text:sub(1, col - 1))
 end
-
 
 function DocView:get_x_offset_col(line, x)
   local text = self.doc:get_line(line)
@@ -158,7 +147,6 @@ function DocView:get_x_offset_col(line, x)
   return #text
 end
 
-
 function DocView:resolve_screen_position(x, y)
   local ox, oy = self:get_line_screen_position(1)
   local line = math.floor((y - oy) / self:get_line_height()) + 1
@@ -166,7 +154,6 @@ function DocView:resolve_screen_position(x, y)
   local col = self:get_x_offset_col(line, x - ox)
   return line, col
 end
-
 
 function DocView:scroll_to_line(line, ignore_if_visible, instant)
   local min, max = self:get_visible_line_range()
@@ -179,7 +166,6 @@ function DocView:scroll_to_line(line, ignore_if_visible, instant)
   end
 end
 
-
 function DocView:scroll_to_make_visible(line, col)
   local min = self:get_line_height() * (line - 1)
   local max = self:get_line_height() * (line + 2) - self.size.y
@@ -190,7 +176,6 @@ function DocView:scroll_to_make_visible(line, col)
   local max = xoffset - self.size.x + gw + self.size.x / 5
   self.scroll.to.x = math.max(0, max)
 end
-
 
 local function mouse_selection(doc, clicks, line1, col1, line2, col2)
   local swap = line2 < line1 or line2 == line1 and col2 <= col1
@@ -213,6 +198,19 @@ local function mouse_selection(doc, clicks, line1, col1, line2, col2)
 end
 
 
+function DocView:on_context_menu(x, y)
+  local line, col = self:resolve_screen_position(x, y)
+  local l1, c1, l2, c2 = self.doc:get_selection(true)
+
+  local after_start = line > l1 or (line == l1 and col >= c1)
+  local before_end = line < l2 or (line == l2 and col < c2)
+
+  if self.doc:has_selection() and after_start and before_end then return end
+
+  self.doc:set_selection(line, col)
+  self.blink_timer = 0
+end
+
 function DocView:on_mouse_pressed(button, x, y, clicks)
   local caught = DocView.super.on_mouse_pressed(self, button, x, y, clicks)
   if caught then
@@ -232,7 +230,6 @@ function DocView:on_mouse_pressed(button, x, y, clicks)
   self.blink_timer = 0
 end
 
-
 function DocView:on_mouse_moved(x, y, ...)
   DocView.super.on_mouse_moved(self, x, y, ...)
 
@@ -250,17 +247,14 @@ function DocView:on_mouse_moved(x, y, ...)
   end
 end
 
-
 function DocView:on_mouse_released(button)
   DocView.super.on_mouse_released(self, button)
   self.mouse_selecting = nil
 end
 
-
 function DocView:on_text_input(text)
   self.doc:text_input(text)
 end
-
 
 function DocView:update()
   -- scroll to make caret visible and reset blink timer if it moved
@@ -286,12 +280,10 @@ function DocView:update()
   DocView.super.update(self)
 end
 
-
 function DocView:draw_line_highlight(x, y)
   local lh = self:get_line_height()
   renderer.draw_rect(x, y, self.size.x, lh, style.line_highlight)
 end
-
 
 function DocView:draw_line_text(idx, x, y)
   local tx, ty = x, y + self:get_line_text_y_offset()
@@ -302,7 +294,6 @@ function DocView:draw_line_text(idx, x, y)
   end
 end
 
-
 function DocView:draw_find_matches(idx, x, y)
   local state = self.doc.find_state
   local matches = state and state.by_line[idx]
@@ -312,11 +303,10 @@ function DocView:draw_find_matches(idx, x, y)
     local x1 = x + self:get_col_x_offset(idx, match.col1)
     local x2 = x + self:get_col_x_offset(idx, match.col2)
     local color = match == state.matches[state.current]
-      and style.find_highlight_current or style.find_highlight
+        and style.find_highlight_current or style.find_highlight
     renderer.draw_rect(x1, y, x2 - x1, lh, color)
   end
 end
-
 
 function DocView:draw_line_body(idx, x, y)
   local line, col = self.doc:get_selection()
@@ -335,7 +325,7 @@ function DocView:draw_line_body(idx, x, y)
 
   -- draw line highlight if caret is on this line
   if config.highlight_current_line and not self.doc:has_selection()
-  and line == idx and core.active_view == self then
+      and line == idx and core.active_view == self then
     self:draw_line_highlight(x + self.scroll.x, y)
   end
 
@@ -346,14 +336,13 @@ function DocView:draw_line_body(idx, x, y)
 
   -- draw caret if it overlaps this line
   if line == idx and core.active_view == self
-  and self.blink_timer < blink_period / 2
-  and system.window_has_focus() then
+      and self.blink_timer < blink_period / 2
+      and system.window_has_focus() then
     local lh = self:get_line_height()
     local x1 = x + self:get_col_x_offset(line, col)
     renderer.draw_rect(x1, y, style.caret_width, lh, style.caret)
   end
 end
-
 
 function DocView:draw_line_gutter(idx, x, y)
   local color = style.line_number
@@ -365,7 +354,6 @@ function DocView:draw_line_gutter(idx, x, y)
   x = x + style.padding.x
   renderer.draw_text(self:get_font(), idx, x, y + yoffset, color)
 end
-
 
 function DocView:draw()
   self:draw_background(style.background)
@@ -395,6 +383,5 @@ function DocView:draw()
 
   self:draw_scrollbar()
 end
-
 
 return DocView

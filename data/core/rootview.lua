@@ -2,6 +2,7 @@ local core = require "core"
 local common = require "core.common"
 local style = require "core.style"
 local config = require "core.config"
+local keymap = require "core.keymap"
 local Tree = require "core.utils.tree"
 local View = require "core.view"
 local DocView = require "core.docview"
@@ -469,6 +470,24 @@ function RootView:open_doc(doc, ViewType)
   return view
 end
 
+function RootView:open_context_menu(x, y)
+  if self.root_node:get_divider_overlapping_point(x, y) then return end
+
+  local node = self.root_node:get_child_overlapping_point(x, y)
+  local idx = node:get_tab_overlapping_point(x, y)
+  if idx then
+    node:set_active_view(node.nodes[idx])
+    return
+  elseif node:get_tab_bar_overlapping_point(x, y) then
+    return
+  end
+
+  local menu = core.context_menu
+  if menu then
+    menu:open(node.active_view, x, y)
+  end
+end
+
 function RootView:on_mouse_pressed(button, x, y, clicks)
   -- a shown floating view is modal: it captures the click, and a click
   -- outside its bounds dismisses it
@@ -477,16 +496,21 @@ function RootView:on_mouse_pressed(button, x, y, clicks)
     if fv:floating_contains_point(x, y) then
       core.set_active_view(fv)
       fv:on_mouse_pressed(button, x, y, clicks)
-    else
-      fv:exit()
+      return
     end
-    return
+    fv:exit()
+    if not fv:should_forward_mouse_press(button) then return end
   end
 
   -- capture titlebar mouse input (for handling events when using engine
   -- self drawn titlebar)
   if self.titlebar and y < self.titlebar.position.y + self.titlebar.size.y then
     self.titlebar:on_mouse_pressed(button, x, y, clicks)
+    return
+  end
+
+  if button == "right" then
+    self:open_context_menu(x, y)
     return
   end
 
@@ -614,6 +638,12 @@ function RootView:on_mouse_wheel(delta, ...)
     return
   end
   node.active_view:on_mouse_wheel(delta, ...)
+end
+
+function RootView:on_key_pressed(key)
+  local fv = self:get_active_floating_view()
+  if fv and fv:on_key_pressed(key) then return true end
+  return keymap.on_key_pressed(key)
 end
 
 function RootView:on_text_input(...)
