@@ -13,20 +13,18 @@ function Doc:new(filename)
   end
 end
 
-
 function Doc:reset()
   if self._document then
     self._document:reset()
   else
     self._document = document.new()
   end
-  self.selection = { a = { line=1, col=1 }, b = { line=1, col=1 } }
+  self.selection = { a = { line = 1, col = 1 }, b = { line = 1, col = 1 } }
   self.undo_stack = { idx = 1 }
   self.redo_stack = { idx = 1 }
   self.clean_change_id = 1
   self:reset_syntax()
 end
-
 
 function Doc:reset_syntax()
   local header = self:get_text(1, 1, self:position_offset(1, 1, 128))
@@ -37,18 +35,16 @@ function Doc:reset_syntax()
   end
 end
 
-
 function Doc:load(filename)
   local native = self._document or document.new()
   assert(native:load(filename))
   self._document = native
-  self.selection = { a = { line=1, col=1 }, b = { line=1, col=1 } }
+  self.selection = { a = { line = 1, col = 1 }, b = { line = 1, col = 1 } }
   self.undo_stack = { idx = 1 }
   self.redo_stack = { idx = 1 }
   self.clean_change_id = 1
   self:reset_syntax()
 end
-
 
 function Doc:save(filename)
   assert(self._document:save(filename))
@@ -56,36 +52,38 @@ function Doc:save(filename)
   self:clean()
 end
 
-
 function Doc:get_name()
   return self:get_filename() or "unsaved"
 end
-
 
 function Doc:get_filename()
   return self._document:filename()
 end
 
+-- Change file identity without saving or reloading the buffer. In particular,
+-- rename must not discard unsaved edits, selections, or undo history.
+-- This is useful for changes to the file like the ones that will be triggered
+-- by treeview later on.
+function Doc:set_filename(filename)
+  self._document:set_filename(filename)
+  self:reset_syntax()
+end
 
 function Doc:is_crlf()
   return self._document:is_crlf()
 end
 
-
 function Doc:set_crlf(enabled)
   self._document:set_crlf(enabled)
 end
-
 
 function Doc:line_count()
   return self._document:line_count()
 end
 
-
 function Doc:get_line(line)
   return self._document:get_line(line)
 end
-
 
 function Doc:each_line()
   local line = 0
@@ -96,21 +94,17 @@ function Doc:each_line()
   end
 end
 
-
 function Doc:is_dirty()
   return self.clean_change_id ~= self:get_change_id()
 end
-
 
 function Doc:clean()
   self.clean_change_id = self:get_change_id()
 end
 
-
 function Doc:get_change_id()
   return self.undo_stack.idx
 end
-
 
 function Doc:set_selection(line1, col1, line2, col2, swap)
   assert(not line2 == not col2, "expected 2 or 4 arguments")
@@ -121,10 +115,9 @@ function Doc:set_selection(line1, col1, line2, col2, swap)
   self.selection.b.line, self.selection.b.col = line2, col2
 end
 
-
 local function sort_positions(line1, col1, line2, col2)
   if line1 > line2
-  or line1 == line2 and col1 > col2 then
+      or line1 == line2 and col1 > col2 then
     return line2, col2, line1, col1, true
   end
   return line1, col1, line2, col2, false
@@ -139,22 +132,18 @@ function Doc:get_selection(sort)
   return a.line, a.col, b.line, b.col
 end
 
-
 function Doc:has_selection()
   local a, b = self.selection.a, self.selection.b
   return not (a.line == b.line and a.col == b.col)
 end
 
-
 function Doc:sanitize_selection()
   self:set_selection(self:get_selection())
 end
 
-
 function Doc:sanitize_position(line, col)
   return self._document:sanitize_position(line, col)
 end
-
 
 local function position_offset_func(self, line, col, fn, ...)
   line, col = self:sanitize_position(line, col)
@@ -184,23 +173,19 @@ function Doc:position_offset(line, col, ...)
   end
 end
 
-
 function Doc:get_text(line1, col1, line2, col2)
   return self._document:get_text(line1, col1, line2, col2)
 end
 
-
 function Doc:get_char(line, col)
   return self._document:get_char(line, col)
 end
-
 
 local function push_undo(undo_stack, time, type, ...)
   undo_stack[undo_stack.idx] = { type = type, time = time, ... }
   undo_stack[undo_stack.idx - config.max_undos] = nil
   undo_stack.idx = undo_stack.idx + 1
 end
-
 
 local function pop_undo(self, undo_stack, redo_stack)
   -- pop command
@@ -212,11 +197,9 @@ local function pop_undo(self, undo_stack, redo_stack)
   if cmd.type == "insert" then
     local line, col, text = table.unpack(cmd)
     self:raw_insert(line, col, text, redo_stack, cmd.time)
-
   elseif cmd.type == "remove" then
     local line1, col1, line2, col2 = table.unpack(cmd)
     self:raw_remove(line1, col1, line2, col2, redo_stack, cmd.time)
-
   elseif cmd.type == "selection" then
     self.selection.a.line, self.selection.a.col = cmd[1], cmd[2]
     self.selection.b.line, self.selection.b.col = cmd[3], cmd[4]
@@ -242,7 +225,6 @@ function Doc:raw_insert(line, col, text, undo_stack, time)
   self:sanitize_selection()
 end
 
-
 function Doc:raw_remove(line1, col1, line2, col2, undo_stack, time)
   -- push undo
   local text = self:get_text(line1, col1, line2, col2)
@@ -255,13 +237,11 @@ function Doc:raw_remove(line1, col1, line2, col2, undo_stack, time)
   self:sanitize_selection()
 end
 
-
 function Doc:insert(line, col, text)
   self.redo_stack = { idx = 1 }
   line, col = self:sanitize_position(line, col)
   self:raw_insert(line, col, text, self.undo_stack, system.get_time())
 end
-
 
 function Doc:remove(line1, col1, line2, col2)
   self.redo_stack = { idx = 1 }
@@ -271,21 +251,17 @@ function Doc:remove(line1, col1, line2, col2)
   self:raw_remove(line1, col1, line2, col2, self.undo_stack, system.get_time())
 end
 
-
 function Doc:undo()
   pop_undo(self, self.undo_stack, self.redo_stack)
 end
-
 
 function Doc:redo()
   pop_undo(self, self.redo_stack, self.undo_stack)
 end
 
-
 function Doc:get_revision()
   return self._document:revision()
 end
-
 
 function Doc:text_input(text)
   if self:has_selection() then
@@ -295,7 +271,6 @@ function Doc:text_input(text)
   self:insert(line, col, text)
   self:move_to(#text)
 end
-
 
 function Doc:replace(fn)
   local line1, col1, line2, col2, swap
@@ -319,7 +294,6 @@ function Doc:replace(fn)
   return n
 end
 
-
 function Doc:delete_to(...)
   local line, col = self:get_selection(true)
   if self:has_selection() then
@@ -332,18 +306,15 @@ function Doc:delete_to(...)
   self:set_selection(line, col)
 end
 
-
 function Doc:move_to(...)
   local line, col = self:get_selection()
   self:set_selection(self:position_offset(line, col, ...))
 end
-
 
 function Doc:select_to(...)
   local line, col, line2, col2 = self:get_selection()
   line, col = self:position_offset(line, col, ...)
   self:set_selection(line, col, line2, col2)
 end
-
 
 return Doc

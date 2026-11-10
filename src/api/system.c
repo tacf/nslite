@@ -16,7 +16,6 @@ static int g_titlebar_drag_margin = 0;
 
 #define SHADOW_PX 8
 
-
 static const char *button_name(int button) {
   switch (button) {
   case 1: return "left";
@@ -25,7 +24,6 @@ static const char *button_name(int button) {
   default: return "?";
   }
 }
-
 
 static char *key_name(
   char *destination, size_t destination_size, SDL_Keycode symbol) {
@@ -125,7 +123,6 @@ static int f_poll_event(lua_State *L) {
   return 0;
 }
 
-
 static int f_wait_event(lua_State *L) {
   double milliseconds = luaL_checknumber(L, 1) * 1000.0;
   Sint32 timeout = 0;
@@ -139,7 +136,6 @@ static int f_wait_event(lua_State *L) {
   lua_pushboolean(L, SDL_WaitEventTimeout(NULL, timeout));
   return 1;
 }
-
 
 static SDL_Cursor *cursor_cache[SDL_SYSTEM_CURSOR_COUNT];
 
@@ -162,7 +158,6 @@ static int f_set_cursor(lua_State *L) {
   return 0;
 }
 
-
 static const char *modifier_opts[] = { "ctrl", "shift", "alt", "cmd", NULL };
 
 static const SDL_Keymod modifier_masks[] = { SDL_KMOD_CTRL, SDL_KMOD_SHIFT,
@@ -174,13 +169,11 @@ static int f_key_modifier_down(lua_State *L) {
   return 1;
 }
 
-
 static int f_set_window_title(lua_State *L) {
   const char *title = luaL_checkstring(L, 1);
   SDL_SetWindowTitle(window, title);
   return 0;
 }
-
 
 static const char *window_opts[] = { "normal", "maximized", "fullscreen", 0 };
 enum { WIN_NORMAL, WIN_MAXIMIZED, WIN_FULLSCREEN };
@@ -203,13 +196,11 @@ static int f_set_window_mode(lua_State *L) {
   return 0;
 }
 
-
 static int f_minimize_window(lua_State *L) {
   (void) L;
   SDL_MinimizeWindow(window);
   return 0;
 }
-
 
 static SDL_HitTestResult SDLCALL hit_test_cb(
   SDL_Window *win, const SDL_Point *point, void *data) {
@@ -267,13 +258,11 @@ static int f_configure_titlebar(lua_State *L) {
   return 0;
 }
 
-
 static int f_window_has_focus(lua_State *L) {
   SDL_WindowFlags flags = SDL_GetWindowFlags(window);
   lua_pushboolean(L, flags & SDL_WINDOW_INPUT_FOCUS);
   return 1;
 }
-
 
 static int f_show_confirm_dialog(lua_State *L) {
   const char *title = luaL_checkstring(L, 1);
@@ -314,12 +303,10 @@ static int f_show_error_dialog(lua_State *L) {
   return 0;
 }
 
-
 typedef struct {
   lua_State *L;
   int count;
 } ListDirData;
-
 
 static SDL_EnumerationResult SDLCALL list_dir_entry(
   void *userdata, const char *dirname, const char *fname) {
@@ -333,7 +320,6 @@ static SDL_EnumerationResult SDLCALL list_dir_entry(
   return SDL_ENUM_CONTINUE;
 }
 
-
 static int f_list_dir(lua_State *L) {
   const char *path = luaL_checkstring(L, 1);
   lua_newtable(L);
@@ -346,7 +332,6 @@ static int f_list_dir(lua_State *L) {
   }
   return 1;
 }
-
 
 static int f_absolute_path(lua_State *L) {
   const char *path = luaL_checkstring(L, 1);
@@ -370,6 +355,32 @@ static int f_absolute_path(lua_State *L) {
   return 1;
 }
 
+/* 
+ * f_create_file exposes file creation to lua api. "wx" -> create if not exist.
+ *
+ * Exclusive creation must also refuse dangling symlinks and files that appear
+ * between a UI existence check and submission. Never open them with "wb". 
+ */
+static int f_create_file(lua_State *L) {
+  const char *filename = luaL_checkstring(L, 1);
+
+  SDL_IOStream *file = SDL_IOFromFile(filename, "wx");
+
+  if (!file) {
+    lua_pushnil(L);
+    lua_pushstring(L, SDL_GetError());
+    return 2;
+  }
+
+  if (!SDL_CloseIO(file)) {
+    lua_pushnil(L);
+    lua_pushstring(L, SDL_GetError());
+    return 2;
+  }
+
+  lua_pushboolean(L, 1);
+  return 1;
+}
 
 static int f_get_file_info(lua_State *L) {
   const char *path = luaL_checkstring(L, 1);
@@ -400,7 +411,6 @@ static int f_get_file_info(lua_State *L) {
   return 1;
 }
 
-
 static int f_get_clipboard(lua_State *L) {
   const char *text = SDL_GetClipboardText();
   if (!text) { return 0; }
@@ -408,13 +418,11 @@ static int f_get_clipboard(lua_State *L) {
   return 1;
 }
 
-
 static int f_set_clipboard(lua_State *L) {
   const char *text = luaL_checkstring(L, 1);
   SDL_SetClipboardText(text);
   return 0;
 }
-
 
 static int f_get_time(lua_State *L) {
   double n = (double) SDL_GetPerformanceCounter()
@@ -422,7 +430,6 @@ static int f_get_time(lua_State *L) {
   lua_pushnumber(L, n);
   return 1;
 }
-
 
 static int f_sleep(lua_State *L) {
   double milliseconds = luaL_checknumber(L, 1) * 1000.0;
@@ -434,14 +441,12 @@ static int f_sleep(lua_State *L) {
   return 0;
 }
 
-
 static int f_exec(lua_State *L) {
   const char *cmd = luaL_checkstring(L, 1);
   int res = system(cmd);
   (void) res;
   return 0;
 }
-
 
 static int f_fuzzy_match(lua_State *L) {
   const char *str = luaL_checkstring(L, 1);
@@ -468,7 +473,6 @@ static int f_fuzzy_match(lua_State *L) {
   return 1;
 }
 
-
 static const luaL_Reg lib[] = { { "poll_event", f_poll_event },
   { "wait_event", f_wait_event }, { "set_cursor", f_set_cursor },
   { "key_modifier_down", f_key_modifier_down },
@@ -480,10 +484,10 @@ static const luaL_Reg lib[] = { { "poll_event", f_poll_event },
   { "show_error_dialog", f_show_error_dialog },
   { "show_confirm_dialog", f_show_confirm_dialog }, { "list_dir", f_list_dir },
   { "absolute_path", f_absolute_path }, { "get_file_info", f_get_file_info },
-  { "get_clipboard", f_get_clipboard }, { "set_clipboard", f_set_clipboard },
-  { "get_time", f_get_time }, { "sleep", f_sleep }, { "exec", f_exec },
-  { "fuzzy_match", f_fuzzy_match }, { NULL, NULL } };
-
+  { "create_file", f_create_file }, { "get_clipboard", f_get_clipboard },
+  { "set_clipboard", f_set_clipboard }, { "get_time", f_get_time },
+  { "sleep", f_sleep }, { "exec", f_exec }, { "fuzzy_match", f_fuzzy_match },
+  { NULL, NULL } };
 
 int luaopen_system(lua_State *L) {
   luaL_newlib(L, lib);

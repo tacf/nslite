@@ -7,7 +7,6 @@
 #include "document.h"
 #include "syntax.h"
 
-
 /* Documents always contain at least one line. Every live line includes its
  * trailing '\n' and is NULL-terminated; byte_count excludes only that NULL.
  * Lines and columns use Lua-facing one-based indexing, and range end positions
@@ -17,7 +16,6 @@ typedef struct {
   size_t byte_count;
   DocumentTokenLine token_line;
 } DocumentLine;
-
 
 struct Document {
   DocumentLine *lines;
@@ -30,32 +28,26 @@ struct Document {
   size_t first_invalid_line;
 };
 
-
 typedef struct {
   size_t line;
   size_t column;
 } DocumentPosition;
 
-
 Document *document_check(lua_State *L, int index) {
   return luaL_checkudata(L, index, API_TYPE_DOCUMENT);
 }
-
 
 const char *document_filename(const Document *document) {
   return document->filename;
 }
 
-
 uint64_t document_revision(const Document *document) {
   return document->revision;
 }
 
-
 size_t document_line_count(const Document *document) {
   return document->line_count;
 }
-
 
 const char *document_line(
   const Document *document, size_t line, size_t *byte_count) {
@@ -63,7 +55,6 @@ const char *document_line(
   if (byte_count) { *byte_count = document->lines[line].byte_count; }
   return document->lines[line].data;
 }
-
 
 /* Document storage operations */
 
@@ -73,7 +64,6 @@ static void line_destroy(DocumentLine *line) {
   *line = (DocumentLine) { 0 };
 }
 
-
 static void document_destroy(Document *document) {
   for (size_t i = 0; i < document->line_count; i++) {
     line_destroy(&document->lines[i]);
@@ -82,7 +72,6 @@ static void document_destroy(Document *document) {
   SDL_free(document->filename);
   *document = (Document) { 0 };
 }
-
 
 static bool document_reserve_lines(Document *document, size_t capacity) {
   if (capacity <= document->line_capacity) { return true; }
@@ -104,7 +93,6 @@ static bool document_reserve_lines(Document *document, size_t capacity) {
   return true;
 }
 
-
 static bool document_append_line(
   Document *document, const char *data, size_t byte_count) {
   if (byte_count > SIZE_MAX - 2) { return false; }
@@ -123,7 +111,6 @@ static bool document_append_line(
   return true;
 }
 
-
 static void document_replace(Document *document, Document *replacement) {
   replacement->revision = document->revision + 1;
   replacement->syntax = document->syntax;
@@ -132,14 +119,12 @@ static void document_replace(Document *document, Document *replacement) {
   *replacement = (Document) { 0 };
 }
 
-
 static bool document_reset(Document *document) {
   Document replacement = { 0 };
   if (!document_append_line(&replacement, "", 0)) { return false; }
   document_replace(document, &replacement);
   return true;
 }
-
 
 static void document_invalidate_tokens(Document *document, size_t line) {
   for (size_t i = line; i < document->line_count; i++) {
@@ -149,7 +134,6 @@ static void document_invalidate_tokens(Document *document, size_t line) {
     document->first_invalid_line = line;
   }
 }
-
 
 static bool document_tokenize_to(
   Document *document, size_t line, int *error_code) {
@@ -167,7 +151,6 @@ static bool document_tokenize_to(
   return true;
 }
 
-
 /* File I/O operations */
 
 static bool document_append_file_line(
@@ -178,7 +161,6 @@ static bool document_append_file_line(
   }
   return document_append_line(document, data, byte_count);
 }
-
 
 static bool document_load(Document *document, const char *filename) {
   size_t file_size = 0;
@@ -215,7 +197,6 @@ static bool document_load(Document *document, const char *filename) {
   return true;
 }
 
-
 static bool io_write_all(
   SDL_IOStream *stream, const char *data, size_t byte_count) {
   while (byte_count) {
@@ -226,7 +207,6 @@ static bool io_write_all(
   }
   return true;
 }
-
 
 static bool document_save(Document *document, const char *filename, bool crlf) {
   char *stored_filename = SDL_strdup(filename);
@@ -266,7 +246,6 @@ static bool document_save(Document *document, const char *filename, bool crlf) {
   return true;
 }
 
-
 /* Editing and text access */
 
 static size_t lua_check_clamped_index(lua_State *L, int index, size_t maximum) {
@@ -276,7 +255,6 @@ static size_t lua_check_clamped_index(lua_State *L, int index, size_t maximum) {
   return (size_t) luaL_checkinteger(L, index);
 }
 
-
 static DocumentPosition lua_check_position(
   lua_State *L, const Document *document, int line_index, int column_index) {
   size_t line = lua_check_clamped_index(L, line_index, document->line_count);
@@ -284,7 +262,6 @@ static DocumentPosition lua_check_position(
     L, column_index, document->lines[line - 1].byte_count);
   return (DocumentPosition) { line, column };
 }
-
 
 static void position_sort(DocumentPosition *a, DocumentPosition *b) {
   if (a->line < b->line || (a->line == b->line && a->column <= b->column)) {
@@ -294,7 +271,6 @@ static void position_sort(DocumentPosition *a, DocumentPosition *b) {
   *a = *b;
   *b = temporary;
 }
-
 
 static bool line_join(DocumentLine *result, const char *first,
   size_t first_length, const char *second, size_t second_length,
@@ -323,7 +299,6 @@ static bool line_join(DocumentLine *result, const char *first,
   result->byte_count = length;
   return true;
 }
-
 
 static bool document_insert(Document *document, DocumentPosition at,
   const char *text, size_t text_length, DocumentPosition *end_position) {
@@ -393,7 +368,6 @@ static bool document_insert(Document *document, DocumentPosition at,
   return true;
 }
 
-
 static bool document_remove(
   Document *document, DocumentPosition start, DocumentPosition end) {
   const DocumentLine *first = &document->lines[start.line - 1];
@@ -422,7 +396,6 @@ static bool document_remove(
   document_invalidate_tokens(document, first_index);
   return true;
 }
-
 
 static DocumentPosition document_position_offset(
   const Document *document, DocumentPosition position, lua_Integer offset) {
@@ -466,7 +439,6 @@ static DocumentPosition document_position_offset(
   return (DocumentPosition) { line + 1, column };
 }
 
-
 /* Lua bindings */
 
 static int lua_push_position(lua_State *L, DocumentPosition position) {
@@ -474,7 +446,6 @@ static int lua_push_position(lua_State *L, DocumentPosition position) {
   lua_pushinteger(L, (lua_Integer) position.column);
   return 2;
 }
-
 
 static int lua_push_sdl_result(
   lua_State *L, bool success, const char *operation) {
@@ -487,7 +458,6 @@ static int lua_push_sdl_result(
   return 2;
 }
 
-
 static int f_new(lua_State *L) {
   Document *document = lua_newuserdatauv(L, sizeof(*document), 1);
   *document = (Document) { 0 };
@@ -497,7 +467,6 @@ static int f_new(lua_State *L) {
   luaL_setmetatable(L, API_TYPE_DOCUMENT);
   return 1;
 }
-
 
 static int f_set_syntax(lua_State *L) {
   Document *document = document_check(L, 1);
@@ -510,7 +479,6 @@ static int f_set_syntax(lua_State *L) {
   lua_setiuservalue(L, 1, 1);
   return 0;
 }
-
 
 static int f_token_iterator(lua_State *L) {
   Document *document = document_check(L, lua_upvalueindex(1));
@@ -527,7 +495,6 @@ static int f_token_iterator(lua_State *L) {
   lua_replace(L, lua_upvalueindex(3));
   return 3;
 }
-
 
 static int f_each_token(lua_State *L) {
   Document *document = document_check(L, 1);
@@ -557,7 +524,6 @@ static int f_each_token(lua_State *L) {
   return 1;
 }
 
-
 static int f_reset(lua_State *L) {
   Document *document = document_check(L, 1);
   if (!document_reset(document)) {
@@ -566,13 +532,11 @@ static int f_reset(lua_State *L) {
   return 0;
 }
 
-
 static int f_load(lua_State *L) {
   Document *document = document_check(L, 1);
   const char *filename = luaL_checkstring(L, 2);
   return lua_push_sdl_result(L, document_load(document, filename), "load");
 }
-
 
 static int f_save(lua_State *L) {
   Document *document = document_check(L, 1);
@@ -587,13 +551,11 @@ static int f_save(lua_State *L) {
     L, document_save(document, filename, crlf), "save");
 }
 
-
 static int f_line_count(lua_State *L) {
   Document *document = document_check(L, 1);
   lua_pushinteger(L, (lua_Integer) document->line_count);
   return 1;
 }
-
 
 static int f_get_line(lua_State *L) {
   Document *document = document_check(L, 1);
@@ -604,12 +566,10 @@ static int f_get_line(lua_State *L) {
   return 1;
 }
 
-
 static int f_sanitize_position(lua_State *L) {
   Document *document = document_check(L, 1);
   return lua_push_position(L, lua_check_position(L, document, 2, 3));
 }
-
 
 static int f_position_offset(lua_State *L) {
   Document *document = document_check(L, 1);
@@ -618,7 +578,6 @@ static int f_position_offset(lua_State *L) {
   return lua_push_position(
     L, document_position_offset(document, position, offset));
 }
-
 
 static int f_get_text(lua_State *L) {
   Document *document = document_check(L, 1);
@@ -648,7 +607,6 @@ static int f_get_text(lua_State *L) {
   return 1;
 }
 
-
 static int f_get_char(lua_State *L) {
   Document *document = document_check(L, 1);
   DocumentPosition position = lua_check_position(L, document, 2, 3);
@@ -656,7 +614,6 @@ static int f_get_char(lua_State *L) {
   lua_pushlstring(L, line->data + position.column - 1, 1);
   return 1;
 }
-
 
 static int f_insert(lua_State *L) {
   Document *document = document_check(L, 1);
@@ -670,7 +627,6 @@ static int f_insert(lua_State *L) {
   return lua_push_position(L, end);
 }
 
-
 static int f_remove(lua_State *L) {
   Document *document = document_check(L, 1);
   DocumentPosition start = lua_check_position(L, document, 2, 3);
@@ -682,13 +638,11 @@ static int f_remove(lua_State *L) {
   return 0;
 }
 
-
 static int f_revision(lua_State *L) {
   Document *document = document_check(L, 1);
   lua_pushinteger(L, (lua_Integer) document->revision);
   return 1;
 }
-
 
 static int f_filename(lua_State *L) {
   Document *document = document_check(L, 1);
@@ -697,13 +651,29 @@ static int f_filename(lua_State *L) {
   return 1;
 }
 
+/*
+ * f_set_filename exposes ability to change filenames to the lua code.
+*/
+static int f_set_filename(lua_State *L) {
+  Document *document = document_check(L, 1);
+
+  const char *filename = luaL_optstring(L, 2, NULL);
+  char *copy = filename ? SDL_strdup(filename) : NULL;
+
+  if (filename && !copy) {
+    return luaL_error(L, "out of memory setting filename");
+  }
+
+  SDL_free(document->filename);
+  document->filename = copy;
+  return 0;
+}
 
 static int f_is_crlf(lua_State *L) {
   Document *document = document_check(L, 1);
   lua_pushboolean(L, document->crlf);
   return 1;
 }
-
 
 static int f_set_crlf(lua_State *L) {
   Document *document = document_check(L, 1);
@@ -712,13 +682,11 @@ static int f_set_crlf(lua_State *L) {
   return 0;
 }
 
-
 static int f_gc(lua_State *L) {
   Document *document = document_check(L, 1);
   document_destroy(document);
   return 0;
 }
-
 
 static const luaL_Reg document_lib[] = { { "__gc", f_gc }, { "reset", f_reset },
   { "load", f_load }, { "save", f_save }, { "line_count", f_line_count },
@@ -726,14 +694,12 @@ static const luaL_Reg document_lib[] = { { "__gc", f_gc }, { "reset", f_reset },
   { "position_offset", f_position_offset }, { "get_text", f_get_text },
   { "get_char", f_get_char }, { "insert", f_insert }, { "remove", f_remove },
   { "revision", f_revision }, { "filename", f_filename },
-  { "is_crlf", f_is_crlf }, { "set_crlf", f_set_crlf },
-  { "set_syntax", f_set_syntax }, { "each_token", f_each_token },
-  { NULL, NULL } };
-
+  { "set_filename", f_set_filename }, { "is_crlf", f_is_crlf },
+  { "set_crlf", f_set_crlf }, { "set_syntax", f_set_syntax },
+  { "each_token", f_each_token }, { NULL, NULL } };
 
 static const luaL_Reg module_lib[] = { { "new", f_new },
   { "compile_syntax", document_syntax_compile }, { NULL, NULL } };
-
 
 int luaopen_document(lua_State *L) {
   document_syntax_register(L);

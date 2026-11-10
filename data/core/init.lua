@@ -18,7 +18,7 @@ local function project_scan_thread()
     if #a ~= #b then return true end
     for i, v in ipairs(a) do
       if b[i].filename ~= v.filename
-      or b[i].modified ~= v.modified then
+          or b[i].modified ~= v.modified then
         return true
       end
     end
@@ -33,7 +33,7 @@ local function project_scan_thread()
     t = t or {}
     local size_limit = config.file_size_limit * 10e5
     local directory = path == "" and core.project_dir
-      or core.project_dir .. PATHSEP .. path
+        or core.project_dir .. PATHSEP .. path
     local all = system.list_dir(directory) or {}
     local dirs, files = {}, {}
 
@@ -63,6 +63,7 @@ local function project_scan_thread()
   end
 
   while true do
+    core.project_scan_requested = false
     -- get project files and replace previous table if the new table is
     -- different
     local t = get_files("")
@@ -72,7 +73,9 @@ local function project_scan_thread()
     end
 
     -- wait for next scan
-    coroutine.yield(config.project_scan_rate)
+    if not core.project_scan_requested then
+      coroutine.yield(config.project_scan_rate)
+    end
   end
 end
 
@@ -100,7 +103,7 @@ function core.init()
   core.project_dir = assert(system.absolute_path(project_dir))
 
   core.frame_start = 0
-  core.clip_rect_stack = {{ 0,0,0,0 }}
+  core.clip_rect_stack = { { 0, 0, 0, 0 } }
   core.log_items = {}
   core.docs = {}
   core.threads = setmetatable({}, { __mode = "k" })
@@ -123,7 +126,7 @@ function core.init()
   core.root_view:add_floating_view(core.command_view)
   core.root_view:add_floating_view(core.find_view)
 
-  core.add_thread(project_scan_thread)
+  core.project_scan_thread = core.add_thread(project_scan_thread)
   command.add_defaults()
   local got_plugin_error = not core.load_plugins()
   local got_user_error = not core.try(function()
@@ -143,7 +146,6 @@ function core.init()
   end
 end
 
-
 local temp_uid = math.floor((system.get_time() * 1000) % 0xffffffff)
 local temp_file_prefix = string.format(".nslite_temp_%08x", temp_uid)
 local temp_file_counter = 0
@@ -161,7 +163,6 @@ function core.temp_filename(ext)
   return EXEDIR .. PATHSEP .. temp_file_prefix
       .. string.format("%06x", temp_file_counter) .. (ext or "")
 end
-
 
 function core.quit(force)
   if force then
@@ -189,7 +190,6 @@ function core.quit(force)
   core.quit(true)
 end
 
-
 function core.load_plugins()
   local no_errors = true
   local files = system.list_dir(EXEDIR .. "/data/plugins")
@@ -205,7 +205,6 @@ function core.load_plugins()
   return no_errors
 end
 
-
 function core.load_project_module()
   local filename = core.project_dir .. PATHSEP .. ".nslite_project.lua"
   if system.get_file_info(filename) then
@@ -219,7 +218,6 @@ function core.load_project_module()
   return true
 end
 
-
 function core.reload_module(name)
   local old = package.loaded[name]
   package.loaded[name] = nil
@@ -230,7 +228,6 @@ function core.reload_module(name)
   end
 end
 
-
 function core.set_active_view(view)
   assert(view, "Tried to set active view to nil")
   if view ~= core.active_view then
@@ -239,24 +236,28 @@ function core.set_active_view(view)
   end
 end
 
-
 function core.add_thread(f, weak_ref)
   local key = weak_ref or #core.threads + 1
   local fn = function() return core.try(f) end
   core.threads[key] = { cr = coroutine.create(fn), wake = 0 }
+  return core.threads[key]
 end
 
+-- Wake a sleeping scan, or repeat it if a mutation occurs mid-scan.
+function core.request_project_scan()
+  core.project_scan_requested = true
+  if core.project_scan_thread then core.project_scan_thread.wake = 0 end
+end
 
 function core.push_clip_rect(x, y, w, h)
   local x2, y2, w2, h2 = table.unpack(core.clip_rect_stack[#core.clip_rect_stack])
-  local r, b, r2, b2 = x+w, y+h, x2+w2, y2+h2
+  local r, b, r2, b2 = x + w, y + h, x2 + w2, y2 + h2
   x, y = math.max(x, x2), math.max(y, y2)
   b, r = math.min(b, b2), math.min(r, r2)
-  w, h = r-x, b-y
+  w, h = r - x, b - y
   table.insert(core.clip_rect_stack, { x, y, w, h })
   renderer.set_clip_rect(x, y, w, h)
 end
-
 
 function core.pop_clip_rect()
   table.remove(core.clip_rect_stack)
@@ -264,14 +265,12 @@ function core.pop_clip_rect()
   renderer.set_clip_rect(x, y, w, h)
 end
 
-
 function core.project_path(filename)
   if not filename or filename:match("^[/\\]") or filename:match("^%a:[/\\]") then
     return filename
   end
   return core.project_dir .. PATHSEP .. filename
 end
-
 
 function core.open_doc(filename)
   filename = core.project_path(filename)
@@ -281,7 +280,7 @@ function core.open_doc(filename)
     for _, doc in ipairs(core.docs) do
       local doc_filename = doc:get_filename()
       if doc_filename
-      and abs_filename == system.absolute_path(doc_filename) then
+          and abs_filename == system.absolute_path(doc_filename) then
         return doc
       end
     end
@@ -293,12 +292,10 @@ function core.open_doc(filename)
   return doc
 end
 
-
 function core.open_file(filename)
   filename = core.project_path(filename)
   return require("core.filepresentation").open(filename)
 end
-
 
 function core.get_views_referencing_doc(doc)
   local res = {}
@@ -308,7 +305,6 @@ function core.get_views_referencing_doc(doc)
   end
   return res
 end
-
 
 local function log(icon, icon_color, fmt, ...)
   local text = string.format(fmt, ...)
@@ -331,16 +327,13 @@ function core.log(...)
   return log("i", style.text, ...)
 end
 
-
 function core.log_quiet(...)
   return log(nil, nil, ...)
 end
 
-
 function core.error(...)
   return log("!", style.accent, ...)
 end
-
 
 function core.try(fn, ...)
   local err
@@ -354,7 +347,6 @@ function core.try(fn, ...)
   end
   return false, err
 end
-
 
 function core.on_event(type, ...)
   local did_keymap = false
@@ -388,14 +380,13 @@ function core.on_event(type, ...)
   return did_keymap
 end
 
-
 function core.step()
   -- handle events
   local did_keymap = false
   local mouse_moved = false
   local mouse = { x = 0, y = 0, dx = 0, dy = 0 }
 
-  for type, a,b,c,d in system.poll_event do
+  for type, a, b, c, d in system.poll_event do
     if type == "mousemoved" then
       mouse_moved = true
       mouse.x, mouse.y = a, b
@@ -431,7 +422,7 @@ function core.step()
 
   -- update window title
   local name = core.active_view:get_name()
-  local title = (name ~= "---") and (name .. " - nslite") or  "nslite"
+  local title = (name ~= "---") and (name .. " - nslite") or "nslite"
   if title ~= core.window_title then
     system.set_window_title(title)
     core.window_title = title
@@ -448,7 +439,6 @@ function core.step()
   renderer.end_frame()
   return true
 end
-
 
 local run_threads = coroutine.wrap(function()
   while true do
@@ -495,7 +485,6 @@ function core.run()
   end
 end
 
-
 function core.on_error(err)
   -- write error to file
   local fp = io.open(EXEDIR .. "/error.txt", "wb")
@@ -510,6 +499,5 @@ function core.on_error(err)
     end
   end
 end
-
 
 return core
