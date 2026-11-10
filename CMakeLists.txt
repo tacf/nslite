@@ -42,7 +42,10 @@ else()
     FetchContent_Declare(
         SDL3
         GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-        GIT_TAG        main
+        # Pinned due to unguarded regression added ind upstream. 
+        # Commit a00b14fee, which added unguarded SDL_OnUpdateJoysticksChanged 
+        # calls with SDL_JOYSTICK=OFF.
+        GIT_TAG        c172ab7164145a6a3ffabecc1c0a02dc0bde673d
         GIT_SHALLOW    TRUE
     )
 
