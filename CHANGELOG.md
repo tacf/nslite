@@ -1,6 +1,12 @@
 # Changelog
 
-## 2.1.0
+## v2.1.1
+
+### Fixed
+
+- Context menu was allowing hover events to be triggered when over the treeview
+
+## v2.1.0
 
 - Configurable right-click context menus with scoped registration, nested
   submenus, scrolling, and keyboard navigation.
@@ -9,7 +15,7 @@
     and copy paths in TreeView. Deleting keeps open text buffers as unsaved
     documents; renaming preserves unsaved edits and undo history.
 
-## 2.0.0
+## v2.0.0
 
 ### Added
 
