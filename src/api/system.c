@@ -382,6 +382,46 @@ static int f_create_file(lua_State *L) {
   return 1;
 }
 
+/* SDL3 handles UTF-8 filenames on every platform. */
+static int f_rename_file(lua_State *L) {
+  const char *oldpath = luaL_checkstring(L, 1);
+  const char *newpath = luaL_checkstring(L, 2);
+
+  /* Note: SDL_RenamePath replaces an existing destination. */
+  if (!SDL_RenamePath(oldpath, newpath)) {
+    lua_pushnil(L);
+    lua_pushstring(L, SDL_GetError());
+    return 2;
+  }
+
+  lua_pushboolean(L, 1);
+  return 1;
+}
+
+static int f_remove_file(lua_State *L) {
+  const char *path = luaL_checkstring(L, 1);
+
+  if (!SDL_RemovePath(path)) {
+    lua_pushnil(L);
+    lua_pushstring(L, SDL_GetError());
+    return 2;
+  }
+
+  lua_pushboolean(L, 1);
+  return 1;
+}
+
+static int f_same_path(lua_State *L) {
+  const char *a = luaL_checkstring(L, 1);
+  const char *b = luaL_checkstring(L, 2);
+#ifdef _WIN32
+  lua_pushboolean(L, SDL_strcasecmp(a, b) == 0);
+#else
+  lua_pushboolean(L, SDL_strcmp(a, b) == 0);
+#endif
+  return 1;
+}
+
 static int f_get_file_info(lua_State *L) {
   const char *path = luaL_checkstring(L, 1);
 
@@ -484,10 +524,11 @@ static const luaL_Reg lib[] = { { "poll_event", f_poll_event },
   { "show_error_dialog", f_show_error_dialog },
   { "show_confirm_dialog", f_show_confirm_dialog }, { "list_dir", f_list_dir },
   { "absolute_path", f_absolute_path }, { "get_file_info", f_get_file_info },
-  { "create_file", f_create_file }, { "get_clipboard", f_get_clipboard },
-  { "set_clipboard", f_set_clipboard }, { "get_time", f_get_time },
-  { "sleep", f_sleep }, { "exec", f_exec }, { "fuzzy_match", f_fuzzy_match },
-  { NULL, NULL } };
+  { "create_file", f_create_file }, { "rename_file", f_rename_file },
+  { "remove_file", f_remove_file }, { "same_path", f_same_path },
+  { "get_clipboard", f_get_clipboard }, { "set_clipboard", f_set_clipboard },
+  { "get_time", f_get_time }, { "sleep", f_sleep }, { "exec", f_exec },
+  { "fuzzy_match", f_fuzzy_match }, { NULL, NULL } };
 
 int luaopen_system(lua_State *L) {
   luaL_newlib(L, lib);

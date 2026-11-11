@@ -2,9 +2,12 @@ local core = require "core"
 local common = require "core.common"
 local command = require "core.command"
 local config = require "core.config"
+local contextmenu = require "core.contextmenu"
+local fileops = require "core.fileops"
 local keymap = require "core.keymap"
 local style = require "core.style"
 local View = require "core.view"
+local tables = require "core.utils.tables"
 
 config.treeview_size = 200 * SCALE
 
@@ -237,6 +240,99 @@ command.add(nil, {
 })
 
 keymap.add { ["mod+\\"] = "treeview:toggle" }
+
+
+-- CommandView also takes focus. Restore the editor fallback before running a
+-- file action, rather than leaving last_active_view pointing at the palette.
+local function prompt(title, initial, submit, suggest)
+  local previous, last = core.active_view, core.last_active_view
+  local palette = core.command_view
+  local function restore_focus()
+    if core.active_view == previous or core.active_view == palette then
+      core.set_active_view(previous)
+      core.last_active_view = last
+    elseif core.last_active_view == palette then
+      core.last_active_view = previous
+    end
+  end
+  palette:enter(title, function(text, item)
+    restore_focus()
+    core.try(submit, text, item)
+  end, suggest, restore_focus)
+  palette:set_text(initial, true)
+end
+
+
+contextmenu.add(TreeView, function(view, x, y)
+  local item = view:get_item_at(x, y)
+  local items = {}
+  local directory = item and (item.type == "dir" and item.filename
+    or item.filename:match("^(.*)[/\\][^/\\]+$")) or ""
+  if item and item.type == "dir" then
+    table.insert(items, {
+      text = item.expanded and "Collapse" or "Expand",
+      action = function()
+        item.expanded = not item.expanded
+        core.redraw = true
+      end,
+    })
+  elseif item then
+    table.insert(items, {
+      text = "Open",
+      action = function()
+        core.open_file(item.filename)
+      end,
+    })
+  end
+  if item then table.insert(items, "-") end
+  table.insert(items, {
+    text = "New File...",
+    action = function()
+      prompt("New File", "", function(name)
+        local filename = fileops.create(directory, name)
+        if item and item.type == "dir" then item.expanded = true end
+        core.open_file(filename)
+      end)
+    end,
+  })
+  if item and item.type == "file" then
+    tables.insert_multiple(items, {
+      text = "Rename File...",
+      action = function()
+        prompt("Rename File", item.filename:match("[^/\\]+$"), function(name)
+          fileops.rename(item.filename, name)
+        end)
+      end,
+    }, {
+      text = "Delete File...",
+      action = function()
+        prompt("Delete " .. item.filename .. "? Open buffers will be kept", "Cancel",
+          function(text, choice)
+            if (choice and choice.text == "Delete") or text:lower() == "delete" then
+              fileops.delete(item.filename)
+            end
+          end, function(text)
+            local choices = {}
+            for _, label in ipairs({ "Cancel", "Delete" }) do
+              if label:lower():find(text:lower(), 1, true) then
+                table.insert(choices, label)
+              end
+            end
+            return choices
+          end)
+      end,
+    })
+  end
+  if not item then return items end
+  table.insert(items, "-")
+  table.insert(items, {
+    text = "Copy Path",
+    action = function()
+      system.set_clipboard(item.filename)
+    end,
+  })
+  return items
+end)
 
 
 return TreeView
