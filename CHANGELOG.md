@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.1.0
+
+- Configurable right-click context menus with scoped registration, nested
+  submenus, scrolling, and keyboard navigation.
+  - Cut, copy, paste, selection, and line comments in DocView.
+  - Create, rename, and delete files, open files, expand/collapse directories,
+    and copy paths in TreeView. Deleting keeps open text buffers as unsaved
+    documents; renaming preserves unsaved edits and undo history.
+
+## 2.0.0
+
+### Added
+
+- Native/Custom window border selection
+- Rework internal structure of views
+- Slim down SDL3 Imports
+
 ## v1.6.2
 
 ### Fixed
