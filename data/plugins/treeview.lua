@@ -152,10 +152,14 @@ function TreeView:update()
 
   TreeView.super.update(self)
 
-  -- the wheel scrolls without a mouse move, so refresh the highlight against
-  -- the settled scroll position
-  local mouse = core.root_view.mouse
-  self.hovered_item = self:get_item_at(mouse.x, mouse.y)
+  -- Floating views capture hover as well as mouse events.
+  if core.root_view:get_active_floating_view() then
+    self.hovered_item = nil
+  else
+    -- Refresh hover after scrolling without mouse movement.
+    local mouse = core.root_view.mouse
+    self.hovered_item = self:get_item_at(mouse.x, mouse.y)
+  end
 end
 
 function TreeView:get_item_icon(item, active, hovered)
